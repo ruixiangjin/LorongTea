@@ -1,0 +1,21 @@
+services:
+  mysql:
+    image: mysql:8.4.11@sha256:b3b90af2a6552ae30c266fdb7d5dd55f3afb72404bb78d37fe8a23eb857fd3fb
+    environment:
+      MYSQL_DATABASE: lorong_tea
+      MYSQL_USER: lorong_tea
+      MYSQL_PASSWORD: ${LORONG_DB_PASSWORD:-lorong-tea-local}
+      MYSQL_RANDOM_ROOT_PASSWORD: "yes"
+    command: ["--default-time-zone=+00:00"]
+    ports:
+      - "127.0.0.1:${LORONG_DB_PORT:-3307}:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "MYSQL_PWD=\"$$MYSQL_PASSWORD\" mysql --protocol=TCP -h 127.0.0.1 -u \"$$MYSQL_USER\" \"$$MYSQL_DATABASE\" -e 'SELECT 1'"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  mysql-data:
