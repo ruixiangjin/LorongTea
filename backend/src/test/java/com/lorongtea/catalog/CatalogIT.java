@@ -1,6 +1,10 @@
 package com.lorongtea.catalog;
 
+import java.util.UUID;
+
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -14,6 +18,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.mysql.MySQLContainer;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -87,5 +92,47 @@ class CatalogIT {
                 .andExpect(jsonPath("$.data[1].skuCode").value("brown-sugar-boba"))
                 .andExpect(jsonPath("$.data[1].priceCents").value(1050))
                 .andExpect(jsonPath("$.data[1].listed").value(false));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"abc", "0", "-1", "9223372036854775808"})
+    void rejectsInvalidStoreIds(String storeId) throws Exception {
+        assertError("/api/v1/stores/" + storeId + "/menu", 400, "INVALID_REQUEST", "Invalid request");
+    }
+
+    @Test
+    void returnsAConsistentErrorForAMissingStore() throws Exception {
+        assertError("/api/v1/stores/999/menu", 404, "STORE_NOT_FOUND", "Store not found");
+    }
+
+    @Test
+    @Transactional
+    void hidesInactiveStoresFromTheCatalog() throws Exception {
+        Store store = stores.selectById(2L);
+        store.setActive(false);
+        assertThat(stores.updateById(store)).isEqualTo(1);
+
+        mvc.perform(get("/api/v1/stores"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(1));
+        assertError("/api/v1/stores/2/menu", 404, "STORE_NOT_FOUND", "Store not found");
+    }
+
+    @Test
+    void returnsTheSameEnvelopeForAnUnknownRoute() throws Exception {
+        assertError("/api/v1/unknown", 404, "NOT_FOUND", "Resource not found");
+    }
+
+    private void assertError(String path, int httpStatus, String code, String message) throws Exception {
+        mvc.perform(get(path).header("X-Request-ID", "client-supplied"))
+                .andExpect(status().is(httpStatus))
+                .andExpect(header().exists("X-Request-ID"))
+                .andExpect(jsonPath("$.code").value(code))
+                .andExpect(jsonPath("$.message").value(message))
+                .andExpect(result -> {
+                    String requestId = result.getResponse().getHeader("X-Request-ID");
+                    assertThat(UUID.fromString(requestId).toString()).isEqualTo(requestId);
+                    jsonPath("$.requestId").value(requestId).match(result);
+                });
     }
 }

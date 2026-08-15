@@ -37,3 +37,14 @@ Restarting the backend preserves changes to existing demo rows.
 
 For example, brown sugar boba is listed at RM 9.90 in Bukit Bintang and
 unlisted at RM 10.50 in Petaling Jaya. The menu includes both listing states.
+
+## API errors
+
+Every response includes a server-generated UUID in `X-Request-ID`. Error
+responses include the same ID in `requestId`, alongside `code` and `message`.
+
+| Status | Code | Example |
+| --- | --- | --- |
+| 400 | `INVALID_REQUEST` | The store ID is malformed or is less than 1 |
+| 404 | `STORE_NOT_FOUND` | The store is missing or inactive |
+| 404 | `NOT_FOUND` | The API route does not exist |

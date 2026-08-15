@@ -3,6 +3,7 @@ package com.lorongtea.catalog;
 import java.util.List;
 
 import com.lorongtea.api.ApiResponse;
+import jakarta.validation.constraints.Positive;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -23,7 +24,7 @@ class CatalogController {
     }
 
     @GetMapping("/{storeId}/menu")
-    ApiResponse<List<CatalogService.MenuItemView>> listMenu(@PathVariable long storeId) {
+    ApiResponse<List<CatalogService.MenuItemView>> listMenu(@PathVariable @Positive long storeId) {
         return new ApiResponse<>(catalog.listMenu(storeId));
     }
 }
