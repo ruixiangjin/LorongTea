@@ -5,3 +5,21 @@ spring:
     url: jdbc:mysql://127.0.0.1:${LORONG_DB_PORT:3307}/lorong_tea?connectionTimeZone=UTC&forceConnectionTimeZoneToSession=true
     username: lorong_tea
     password: ${LORONG_DB_PASSWORD:lorong-tea-local}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      group:
+        readiness:
+          include: readinessState,db
+
+logging:
+  structured:
+    format:
+      console: logstash
