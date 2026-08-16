@@ -14,6 +14,13 @@ interface AccountMapper {
             """)
     Account findActiveByUsername(@Param("username") String username);
 
+    @Select("""
+            SELECT id AS user_id, role, store_id
+            FROM app_user
+            WHERE id = #{userId} AND active = TRUE
+            """)
+    AccountIdentity findActiveById(@Param("userId") long userId);
+
     record Account(long id, String passwordHash, Role role, Long storeId) {
     }
 }
