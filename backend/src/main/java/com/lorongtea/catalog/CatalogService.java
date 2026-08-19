@@ -21,7 +21,7 @@ class CatalogService {
                         .eq(Store::isActive, true)
                         .orderByAsc(Store::getId))
                 .stream()
-                .map(store -> new StoreView(store.getId().toString(), store.getCode(), store.getName()))
+                .map(StoreView::from)
                 .toList();
     }
 
@@ -39,6 +39,9 @@ class CatalogService {
     }
 
     record StoreView(String id, String code, String name) {
+        static StoreView from(Store store) {
+            return new StoreView(store.getId().toString(), store.getCode(), store.getName());
+        }
     }
 
     record MenuItemView(String productId, String skuCode, String name, long priceCents, boolean listed) {

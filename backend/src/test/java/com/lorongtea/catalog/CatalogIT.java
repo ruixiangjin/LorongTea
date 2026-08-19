@@ -1,6 +1,10 @@
 package com.lorongtea.catalog;
 
+import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
+
+import com.jayway.jsonpath.JsonPath;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -8,6 +12,13 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
+import org.springframework.security.oauth2.jwt.JwsHeader;
+import org.springframework.security.oauth2.jwt.JwtClaimsSet;
+import org.springframework.security.oauth2.jwt.JwtEncoder;
+import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -19,6 +30,8 @@ import org.testcontainers.mysql.MySQLContainer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -49,6 +62,12 @@ class CatalogIT {
 
     @Autowired
     private MockMvc mvc;
+
+    @Autowired
+    private JwtEncoder jwtEncoder;
+
+    @Autowired
+    private JdbcClient jdbc;
 
     @Test
     @Transactional
@@ -134,6 +153,94 @@ class CatalogIT {
         mvc.perform(get("/actuator/health/readiness"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("UP"));
+    }
+
+    @Test
+    @Transactional
+    void authenticatesBothRolesAndRejectsDisabledAccounts() throws Exception {
+        login("demo-customer", "CUSTOMER");
+        String token = login("demo-bb-staff", "STAFF");
+
+        mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"demo-bb-staff\",\"password\":\"wrong-password\"}"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("INVALID_CREDENTIALS"));
+
+        jdbc.sql("UPDATE app_user SET active = FALSE WHERE username = 'demo-bb-staff'").update();
+        mvc.perform(get("/api/v1/staff/store").header("Authorization", "Bearer " + token))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("UNAUTHORIZED"));
+    }
+
+    @Test
+    void enforcesRoleAndTokenValidation() throws Exception {
+        String staff = login("demo-bb-staff", "STAFF");
+        String customer = login("demo-customer", "CUSTOMER");
+        String subject = jdbc.sql("SELECT id FROM app_user WHERE username = 'demo-bb-staff'")
+                .query(String.class).single();
+        Instant now = Instant.now();
+        int signatureStart = staff.lastIndexOf('.') + 1;
+        char replacement = staff.charAt(signatureStart) == 'a' ? 'b' : 'a';
+        String tampered = staff.substring(0, signatureStart) + replacement + staff.substring(signatureStart + 1);
+
+        mvc.perform(get("/api/v1/staff/store"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.requestId").isNotEmpty());
+        mvc.perform(get("/api/v1/staff/store").header("Authorization", "Bearer " + customer))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+        for (String token : List.of(tampered, signedToken(subject, "wrong-audience", now.plusSeconds(300)),
+                signedToken(subject, "lorong-tea-api", now.minusSeconds(30)))) {
+            mvc.perform(get("/api/v1/staff/store").header("Authorization", "Bearer " + token))
+                    .andExpect(status().isUnauthorized())
+                    .andExpect(header().string("WWW-Authenticate", "Bearer"))
+                    .andExpect(jsonPath("$.code").value("UNAUTHORIZED"));
+        }
+    }
+
+    @Test
+    @Transactional
+    void scopesStaffReadsAndWritesToTheAssignedStore() throws Exception {
+        String staff = login("demo-bb-staff", "STAFF");
+        mvc.perform(get("/api/v1/staff/store").header("Authorization", "Bearer " + staff))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.code").value("bukit-bintang"));
+        mvc.perform(get("/api/v1/staff/stores/1/menu-items").header("Authorization", "Bearer " + staff))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[1].availableQty").value(80));
+        mvc.perform(get("/api/v1/staff/stores/2/menu-items").header("Authorization", "Bearer " + staff))
+                .andExpect(status().isNotFound());
+        mvc.perform(patch("/api/v1/staff/stores/2/menu-items/2").header("Authorization", "Bearer " + staff)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"listed\":true}"))
+                .andExpect(status().isNotFound());
+        mvc.perform(patch("/api/v1/staff/stores/1/menu-items/2").header("Authorization", "Bearer " + staff)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"listed\":false}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.listed").value(false));
+        mvc.perform(get("/api/v1/stores/2/menu"))
+                .andExpect(jsonPath("$.data[1].listed").value(false));
+    }
+
+    private String login(String username, String role) throws Exception {
+        String response = mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"" + username + "\",\"password\":\"integration-test-password\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.role").value(role))
+                .andExpect(jsonPath("$.data.userId").isString())
+                .andExpect(jsonPath("$.data.expiresIn").value(1800))
+                .andReturn().getResponse().getContentAsString();
+        return JsonPath.read(response, "$.data.token");
+    }
+
+    private String signedToken(String subject, String audience, Instant expiresAt) {
+        JwtClaimsSet claims = JwtClaimsSet.builder()
+                .issuer("lorong-tea")
+                .subject(subject)
+                .audience(List.of(audience))
+                .expiresAt(expiresAt)
+                .build();
+        return jwtEncoder.encode(JwtEncoderParameters.from(JwsHeader.with(MacAlgorithm.HS256).build(), claims))
+                .getTokenValue();
     }
 
     private void assertError(String path, int httpStatus, String code, String message) throws Exception {
