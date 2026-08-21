@@ -3,6 +3,9 @@ package com.lorongtea.catalog;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.Callable;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import com.jayway.jsonpath.JsonPath;
 
@@ -237,6 +240,45 @@ class CatalogIT {
                 .andExpect(jsonPath("$.data[1].priceCents").value(1249));
         mvc.perform(get("/api/v1/stores/2/menu"))
                 .andExpect(jsonPath("$.data[1].priceCents").value(1050));
+    }
+
+    @Test
+    void adjustsStockOnceForConcurrentReplaysAndRejectsInvalidChanges() throws Exception {
+        String token = "Bearer " + login("demo-bb-staff", "STAFF");
+        String path = "/api/v1/staff/stores/1/stock-adjustments";
+        UUID operationId = UUID.randomUUID();
+        String request = stockChange(operationId, 12, "Delivery");
+        Callable<String> replay = () -> mvc.perform(post(path).header("Authorization", token)
+                        .contentType(MediaType.APPLICATION_JSON).content(request))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.availableQty").value(132))
+                .andReturn().getResponse().getContentAsString();
+        try (var requests = Executors.newFixedThreadPool(2)) {
+            var first = requests.submit(replay);
+            var second = requests.submit(replay);
+            assertThat(first.get(15, TimeUnit.SECONDS)).isEqualTo(second.get(15, TimeUnit.SECONDS));
+        }
+
+        mvc.perform(post(path).header("Authorization", token).contentType(MediaType.APPLICATION_JSON)
+                        .content(stockChange(operationId, 12, "Different reason")))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("OPERATION_ID_CONFLICT"));
+        mvc.perform(post(path).header("Authorization", token).contentType(MediaType.APPLICATION_JSON)
+                        .content(stockChange(UUID.randomUUID(), -133, "Damaged stock")))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("STOCK_OUT_OF_RANGE"));
+        mvc.perform(post("/api/v1/staff/stores/2/stock-adjustments").header("Authorization", token)
+                        .contentType(MediaType.APPLICATION_JSON).content(request))
+                .andExpect(status().isNotFound());
+
+        assertThat(jdbc.sql("SELECT available_qty FROM store_menu_item WHERE store_id = 1 AND product_id = 1")
+                .query(Integer.class).single()).isEqualTo(132);
+        assertThat(jdbc.sql("SELECT COUNT(*) FROM stock_adjustment").query(Integer.class).single()).isEqualTo(1);
+    }
+
+    private String stockChange(UUID operationId, int delta, String reason) {
+        return """
+                {"operationId":"%s","productId":"1","delta":%d,"reason":"%s"}
+                """.formatted(operationId, delta, reason);
     }
 
     private String login(String username, String role) throws Exception {
