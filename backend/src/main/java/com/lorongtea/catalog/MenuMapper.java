@@ -23,11 +23,13 @@ interface MenuMapper {
     MenuRow findItem(@Param("storeId") long storeId, @Param("productId") long productId);
 
     @Update("""
-            UPDATE store_menu_item SET listed = #{listed}
+            UPDATE store_menu_item
+            SET price_cents = COALESCE(#{priceCents,jdbcType=BIGINT}, price_cents),
+                listed = COALESCE(#{listed,jdbcType=BOOLEAN}, listed)
             WHERE store_id = #{storeId} AND product_id = #{productId}
             """)
-    void updateListing(@Param("storeId") long storeId, @Param("productId") long productId,
-            @Param("listed") boolean listed);
+    void updateMenuItem(@Param("storeId") long storeId, @Param("productId") long productId,
+            @Param("priceCents") Long priceCents, @Param("listed") Boolean listed);
 
     record MenuRow(long productId, String skuCode, String name, long priceCents, boolean listed, int availableQty) {
     }

@@ -29,9 +29,10 @@ class StaffMenuService {
     }
 
     @Transactional
-    public MenuItemView updateListing(AccountIdentity account, long storeId, long productId, boolean listed) {
+    public MenuItemView updateMenuItem(AccountIdentity account, long storeId, long productId,
+            Long priceCents, Boolean listed) {
         access.requireStore(account, storeId);
-        menus.updateListing(storeId, productId, listed);
+        menus.updateMenuItem(storeId, productId, priceCents, listed);
         MenuMapper.MenuRow item = menus.findItem(storeId, productId);
         if (item == null) {
             throw new ApiException(HttpStatus.NOT_FOUND, "MENU_ITEM_NOT_FOUND", "Menu item not found");

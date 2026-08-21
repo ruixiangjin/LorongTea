@@ -221,6 +221,24 @@ class CatalogIT {
                 .andExpect(jsonPath("$.data[1].listed").value(false));
     }
 
+    @Test
+    @Transactional
+    void updatesOnlyTheRequestedPriceAndRejectsFractionalCents() throws Exception {
+        String token = "Bearer " + login("demo-bb-staff", "STAFF");
+        String path = "/api/v1/staff/stores/1/menu-items/2";
+        mvc.perform(patch(path).header("Authorization", token)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"priceCents\":1249.5}"))
+                .andExpect(status().isBadRequest());
+        mvc.perform(patch(path).header("Authorization", token)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"priceCents\":1249}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.listed").value(true));
+        mvc.perform(get("/api/v1/stores/1/menu"))
+                .andExpect(jsonPath("$.data[1].priceCents").value(1249));
+        mvc.perform(get("/api/v1/stores/2/menu"))
+                .andExpect(jsonPath("$.data[1].priceCents").value(1050));
+    }
+
     private String login(String username, String role) throws Exception {
         String response = mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"username\":\"" + username + "\",\"password\":\"integration-test-password\"}"))

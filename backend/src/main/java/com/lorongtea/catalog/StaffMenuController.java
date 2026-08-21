@@ -5,8 +5,9 @@ import java.util.List;
 import com.lorongtea.api.ApiResponse;
 import com.lorongtea.auth.AccountIdentity;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.PositiveOrZero;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -36,12 +37,16 @@ class StaffMenuController {
     }
 
     @PatchMapping("/stores/{storeId}/menu-items/{productId}")
-    ApiResponse<StaffMenuService.MenuItemView> updateListing(@AuthenticationPrincipal AccountIdentity account,
+    ApiResponse<StaffMenuService.MenuItemView> updateMenuItem(@AuthenticationPrincipal AccountIdentity account,
             @PathVariable @Positive long storeId, @PathVariable @Positive long productId,
-            @Valid @RequestBody ListingUpdate request) {
-        return new ApiResponse<>(menus.updateListing(account, storeId, productId, request.listed()));
+            @Valid @RequestBody MenuItemUpdate request) {
+        return new ApiResponse<>(menus.updateMenuItem(account, storeId, productId, request.priceCents(), request.listed()));
     }
 
-    record ListingUpdate(@NotNull Boolean listed) {
+    record MenuItemUpdate(@PositiveOrZero Long priceCents, Boolean listed) {
+        @AssertTrue
+        public boolean isChangePresent() {
+            return priceCents != null || listed != null;
+        }
     }
 }
