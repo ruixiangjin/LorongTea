@@ -14,10 +14,12 @@ import org.springframework.transaction.annotation.Transactional;
 class StockAdjustmentService {
     private final StaffStoreAccess access;
     private final StockAdjustmentMapper stock;
+    private final InventoryMapper inventory;
 
-    StockAdjustmentService(StaffStoreAccess access, StockAdjustmentMapper stock) {
+    StockAdjustmentService(StaffStoreAccess access, StockAdjustmentMapper stock, InventoryMapper inventory) {
         this.access = access;
         this.stock = stock;
+        this.inventory = inventory;
     }
 
     @Transactional(isolation = Isolation.READ_COMMITTED)
@@ -25,7 +27,7 @@ class StockAdjustmentService {
         access.requireStore(account, storeId);
 
         String operationId = change.operationId().toString();
-        Integer quantityBefore = stock.lockItemQuantity(storeId, change.productId());
+        Integer quantityBefore = inventory.lockItemQuantity(storeId, change.productId());
         // A retry waiting for the item lock can now read the original transaction's committed audit row.
         StockAdjustmentMapper.Adjustment saved = stock.findAdjustment(storeId, operationId);
         if (saved != null) {
@@ -34,7 +36,7 @@ class StockAdjustmentService {
         if (quantityBefore == null) {
             throw new ApiException(HttpStatus.NOT_FOUND, "MENU_ITEM_NOT_FOUND", "Menu item not found");
         }
-        if (stock.adjustQuantity(storeId, change.productId(), change.delta()) != 1) {
+        if (inventory.adjustQuantity(storeId, change.productId(), change.delta()) != 1) {
             throw new ApiException(HttpStatus.CONFLICT, "STOCK_OUT_OF_RANGE", "Stock quantity would be out of range");
         }
 
