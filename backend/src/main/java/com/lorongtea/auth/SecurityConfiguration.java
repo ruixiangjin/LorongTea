@@ -35,6 +35,7 @@ class SecurityConfiguration {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(access -> access
                         .requestMatchers("/api/v1/staff/**").hasRole("STAFF")
+                        .requestMatchers("/api/v1/orders", "/api/v1/orders/**").hasRole("CUSTOMER")
                         .anyRequest().permitAll())
                 .exceptionHandling(handling -> handling
                         .authenticationEntryPoint(unauthorized)

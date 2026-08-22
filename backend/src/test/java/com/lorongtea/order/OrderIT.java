@@ -9,21 +9,28 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
+import com.jayway.jsonpath.JsonPath;
 import com.lorongtea.api.ApiException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.mysql.MySQLContainer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest(properties = {
         "LORONG_JWT_SECRET=dGhpcy1pcy1hLXRlc3Qtb25seS1qd3Qtc2lnbmluZy1rZXk=",
@@ -54,6 +61,9 @@ class OrderIT {
 
     @Autowired
     private JdbcClient jdbc;
+
+    @Autowired
+    private MockMvc mvc;
 
     @Test
     void snapshotsTheSaleAndRollsBackEarlierDeductionsWhenALaterItemFails() {
@@ -94,6 +104,52 @@ class OrderIT {
         };
         assertThat(race(attempt, attempt)).containsExactlyInAnyOrder("CREATED", "OUT_OF_STOCK");
         assertThat(quantity(product)).isZero();
+    }
+
+    @Test
+    void replaysConcurrentCheckoutAndRejectsChangedIntents() throws Exception {
+        String customer = token("demo-customer");
+        long product = product("Pearl tea", 500, 4);
+        String key = UUID.randomUUID().toString();
+        String split = """
+                {"storeId":"1","items":[{"productId":"%d","quantity":1},{"productId":"%d","quantity":2}],
+                "expectedTotalCents":1500}
+                """.formatted(product, product);
+        String merged = checkoutBody(product, 3, 1500);
+
+        var results = race(() -> mvc.perform(place(customer, key, split)).andReturn().getResponse(),
+                () -> mvc.perform(place(customer, key, merged)).andReturn().getResponse());
+        assertThat(results).extracting(response -> response.getStatus()).containsExactlyInAnyOrder(201, 200);
+        String id = JsonPath.read(results.getFirst().getContentAsString(), "$.data.id");
+        assertThat(JsonPath.<String>read(results.getLast().getContentAsString(), "$.data.id")).isEqualTo(id);
+
+        mvc.perform(place(customer, key, merged)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.id").value(id));
+        mvc.perform(place(customer, key, checkoutBody(product, 3, 1501)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("IDEMPOTENCY_CONFLICT"));
+        assertThat(quantity(product)).isEqualTo(1);
+    }
+
+    private MockHttpServletRequestBuilder place(
+            String bearer, String key, String body) {
+        return post("/api/v1/orders").header("Authorization", bearer).header("Idempotency-Key", key)
+                .contentType(MediaType.APPLICATION_JSON).content(body);
+    }
+
+    private String checkoutBody(long productId, int quantity, long total) {
+        return """
+                {"storeId":"1","items":[{"productId":"%d","quantity":%d}],"expectedTotalCents":%d}
+                """.formatted(productId, quantity, total);
+    }
+
+    private String token(String username) throws Exception {
+        String response = mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"username":"%s","password":"integration-test-password"}
+                                """.formatted(username)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        return "Bearer " + JsonPath.<String>read(response, "$.data.token");
     }
 
     private long userId(String username) {

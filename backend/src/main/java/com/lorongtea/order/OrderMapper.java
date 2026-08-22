@@ -17,6 +17,9 @@ interface OrderMapper {
             FROM orders
             """;
 
+    @Select(ORDER_COLUMNS + "WHERE customer_id = #{customerId} AND idempotency_key = #{key}")
+    OrderRow findByCustomerAndKey(@Param("customerId") long customerId, @Param("key") String key);
+
     @Insert("""
             INSERT INTO orders (customer_id, store_id, idempotency_key, request_hash, total_cents)
             VALUES (#{customerId}, #{storeId}, #{key}, #{requestHash}, 0)
