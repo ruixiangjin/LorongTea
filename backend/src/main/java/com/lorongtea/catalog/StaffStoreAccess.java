@@ -6,7 +6,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 
 @Component
-class StaffStoreAccess {
+public class StaffStoreAccess {
     private final StoreMapper stores;
 
     StaffStoreAccess(StoreMapper stores) {
@@ -25,7 +25,7 @@ class StaffStoreAccess {
         return store;
     }
 
-    void requireStore(AccountIdentity account, long storeId) {
+    public void requireStore(AccountIdentity account, long storeId) {
         if (assignedStore(account).getId() != storeId) {
             throw new StoreNotFoundException();
         }

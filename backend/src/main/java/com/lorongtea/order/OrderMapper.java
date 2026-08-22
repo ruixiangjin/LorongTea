@@ -20,6 +20,35 @@ interface OrderMapper {
     @Select(ORDER_COLUMNS + "WHERE customer_id = #{customerId} AND idempotency_key = #{key}")
     OrderRow findByCustomerAndKey(@Param("customerId") long customerId, @Param("key") String key);
 
+    @Select(ORDER_COLUMNS + "WHERE customer_id = #{customerId} AND id = #{orderId}")
+    OrderRow findForCustomer(@Param("customerId") long customerId, @Param("orderId") long orderId);
+
+    @Select(ORDER_COLUMNS + "WHERE store_id = #{storeId} AND id = #{orderId}")
+    OrderRow findForStore(@Param("storeId") long storeId, @Param("orderId") long orderId);
+
+    @Select(ORDER_COLUMNS + """
+            WHERE customer_id = #{customerId}
+            ORDER BY created_at DESC, id DESC
+            LIMIT #{limit} OFFSET #{offset}
+            """)
+    List<OrderRow> listForCustomer(@Param("customerId") long customerId,
+            @Param("limit") int limit, @Param("offset") int offset);
+
+    @Select("<script>" + ORDER_COLUMNS + """
+            WHERE store_id = #{storeId}
+            <if test="status != null">
+                AND status = #{status}
+            </if>
+            <choose>
+                <when test="oldestFirst">ORDER BY created_at ASC, id ASC</when>
+                <otherwise>ORDER BY created_at DESC, id DESC</otherwise>
+            </choose>
+            LIMIT #{limit} OFFSET #{offset}
+            </script>
+            """)
+    List<OrderRow> listForStore(@Param("storeId") long storeId, @Param("status") OrderStatus status,
+            @Param("oldestFirst") boolean oldestFirst, @Param("limit") int limit, @Param("offset") int offset);
+
     @Insert("""
             INSERT INTO orders (customer_id, store_id, idempotency_key, request_hash, total_cents)
             VALUES (#{customerId}, #{storeId}, #{key}, #{requestHash}, 0)

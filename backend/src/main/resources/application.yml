@@ -6,6 +6,9 @@ spring:
     username: lorong_tea
     password: ${LORONG_DB_PASSWORD:lorong-tea-local}
   jackson:
+    datatype:
+      datetime:
+        write-dates-as-timestamps: false
     deserialization:
       accept-float-as-int: false
 
