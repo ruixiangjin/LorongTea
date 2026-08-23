@@ -28,10 +28,13 @@ import org.springframework.web.bind.annotation.RestController;
 class CustomerOrderController {
     private final CheckoutService checkout;
     private final OrderQueryService queries;
+    private final CustomerCancellationService cancellation;
 
-    CustomerOrderController(CheckoutService checkout, OrderQueryService queries) {
+    CustomerOrderController(CheckoutService checkout, OrderQueryService queries,
+            CustomerCancellationService cancellation) {
         this.checkout = checkout;
         this.queries = queries;
+        this.cancellation = cancellation;
     }
 
     @PostMapping
@@ -62,6 +65,12 @@ class CustomerOrderController {
     ApiResponse<OrderView> detail(@AuthenticationPrincipal AccountIdentity account,
             @PathVariable @Positive long orderId) {
         return new ApiResponse<>(queries.customerDetail(account.userId(), orderId));
+    }
+
+    @PostMapping("/{orderId}/cancel")
+    ApiResponse<OrderView> cancel(@AuthenticationPrincipal AccountIdentity account,
+            @PathVariable @Positive long orderId) {
+        return new ApiResponse<>(cancellation.cancel(account.userId(), orderId));
     }
 
     record CheckoutRequest(@NotNull @Positive Long storeId,

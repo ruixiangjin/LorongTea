@@ -55,6 +55,12 @@ interface OrderMapper {
             """)
     int start(@Param("storeId") long storeId, @Param("orderId") long orderId);
 
+    @Update("""
+            UPDATE orders SET status = 'CANCELLED', updated_at = UTC_TIMESTAMP(6)
+            WHERE customer_id = #{customerId} AND id = #{orderId} AND status = 'CREATED' AND paid_at IS NULL
+            """)
+    int cancel(@Param("customerId") long customerId, @Param("orderId") long orderId);
+
     @Insert("""
             INSERT INTO orders (customer_id, store_id, idempotency_key, request_hash, total_cents)
             VALUES (#{customerId}, #{storeId}, #{key}, #{requestHash}, 0)

@@ -131,6 +131,46 @@ class OrderIT {
         assertThat(quantity(product)).isEqualTo(1);
     }
 
+    @Test
+    void cancellationAndPreparationHaveOneWinnerAndStockReturnsOnce() throws Exception {
+        String customer = token("demo-customer");
+        String staff = token("demo-bb-staff");
+        long product = product("Milk tea", 650, 4);
+        String id = placeOrder(customer, product, 2, 1300);
+        String cancel = "/api/v1/orders/" + id + "/cancel";
+        String start = staffOrder(id) + "/start";
+
+        var result = race(() -> mvc.perform(authenticatedPost(cancel, customer)).andReturn().getResponse(),
+                () -> mvc.perform(authenticatedPost(start, staff)).andReturn().getResponse());
+        assertThat(result).extracting(response -> response.getStatus()).containsExactlyInAnyOrder(200, 409);
+        var winning = result.stream().filter(response -> response.getStatus() == 200).findFirst().orElseThrow();
+        boolean cancelled = "CANCELLED".equals(JsonPath.<String>read(winning.getContentAsString(), "$.data.status"));
+        assertThat(quantity(product)).isEqualTo(cancelled ? 4 : 2);
+
+        String retryId = placeOrder(customer, product, 1, 650);
+        String retryPath = "/api/v1/orders/" + retryId + "/cancel";
+        int stockBeforeRestore = quantity(product);
+        for (int attempt = 0; attempt < 2; attempt++) {
+            mvc.perform(authenticatedPost(retryPath, customer)).andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.status").value("CANCELLED"));
+        }
+        assertThat(quantity(product)).isEqualTo(stockBeforeRestore + 1);
+    }
+
+    private String placeOrder(String bearer, long productId, int quantity, long total) throws Exception {
+        String response = mvc.perform(place(bearer, UUID.randomUUID().toString(), checkoutBody(productId, quantity, total)))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        return JsonPath.read(response, "$.data.id");
+    }
+
+    private MockHttpServletRequestBuilder authenticatedPost(String path, String bearer) {
+        return post(path).header("Authorization", bearer);
+    }
+
+    private String staffOrder(String id) {
+        return "/api/v1/staff/stores/1/orders/" + id;
+    }
+
     private MockHttpServletRequestBuilder place(
             String bearer, String key, String body) {
         return post("/api/v1/orders").header("Authorization", bearer).header("Idempotency-Key", key)
