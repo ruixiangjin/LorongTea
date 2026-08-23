@@ -67,6 +67,23 @@ interface OrderMapper {
             """)
     int markReady(@Param("storeId") long storeId, @Param("orderId") long orderId, @Param("token") String token);
 
+    @Update("""
+            UPDATE orders
+            SET paid_at = UTC_TIMESTAMP(6), paid_by = #{staffId}, updated_at = UTC_TIMESTAMP(6)
+            WHERE store_id = #{storeId} AND id = #{orderId} AND status = 'READY' AND paid_at IS NULL
+            """)
+    int confirmPayment(@Param("storeId") long storeId, @Param("orderId") long orderId,
+            @Param("staffId") long staffId);
+
+    @Select(ORDER_COLUMNS + "WHERE store_id = #{storeId} AND pickup_token = #{token} FOR UPDATE")
+    OrderRow lockForPickup(@Param("storeId") long storeId, @Param("token") String token);
+
+    @Update("""
+            UPDATE orders SET status = 'COMPLETED', updated_at = UTC_TIMESTAMP(6)
+            WHERE store_id = #{storeId} AND pickup_token = #{token} AND status = 'READY' AND paid_at IS NOT NULL
+            """)
+    int redeem(@Param("storeId") long storeId, @Param("token") String token);
+
     @Insert("""
             INSERT INTO orders (customer_id, store_id, idempotency_key, request_hash, total_cents)
             VALUES (#{customerId}, #{storeId}, #{key}, #{requestHash}, 0)

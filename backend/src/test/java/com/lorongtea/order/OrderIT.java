@@ -1,5 +1,6 @@
 package com.lorongtea.order;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -11,6 +12,7 @@ import java.util.concurrent.TimeUnit;
 
 import com.jayway.jsonpath.JsonPath;
 import com.lorongtea.api.ApiException;
+import com.lorongtea.auth.AccountIdentity;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -28,6 +30,7 @@ import org.testcontainers.mysql.MySQLContainer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -64,6 +67,9 @@ class OrderIT {
 
     @Autowired
     private MockMvc mvc;
+
+    @Autowired
+    private PickupRedemptionService redemption;
 
     @Test
     void snapshotsTheSaleAndRollsBackEarlierDeductionsWhenALaterItemFails() {
@@ -155,6 +161,71 @@ class OrderIT {
                     .andExpect(jsonPath("$.data.status").value("CANCELLED"));
         }
         assertThat(quantity(product)).isEqualTo(stockBeforeRestore + 1);
+    }
+
+    @Test
+    void recordsTheFirstConcurrentPaymentAndShowsPickupOnlyAfterPayment() throws Exception {
+        String customer = token("demo-customer");
+        String firstStaff = token("demo-bb-staff");
+        String secondStaff = token("demo-bb-staff-2");
+        long product = product("Payment tea", 990, 2);
+        String id = placeOrder(customer, product, 1, 990);
+        String detail = "/api/v1/orders/" + id;
+        String confirm = staffOrder(id) + "/confirm-payment";
+
+        mvc.perform(authenticatedPost(confirm, firstStaff)).andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("INVALID_ORDER_STATE"));
+        makeReady(id, firstStaff);
+        String pickup = pickupToken(id);
+        mvc.perform(authenticatedPost(staffOrder(id) + "/ready", secondStaff))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.pickupToken").doesNotHaveJsonPath());
+        assertThat(pickupToken(id)).isEqualTo(pickup).matches("[A-Za-z0-9_-]{22}");
+
+        mvc.perform(get(detail).header("Authorization", customer))
+                .andExpect(jsonPath("$.data.paymentStatus").value("UNPAID"))
+                .andExpect(jsonPath("$.data.pickupToken").doesNotHaveJsonPath());
+        long firstStaffId = userId("demo-bb-staff");
+        var firstAccount = new AccountIdentity(firstStaffId, AccountIdentity.Role.STAFF, 1L);
+        assertThatThrownBy(() -> redemption.redeem(firstAccount, 1, pickup))
+                .isInstanceOfSatisfying(ApiException.class,
+                        error -> assertThat(error.code()).isEqualTo("PAYMENT_REQUIRED"));
+
+        var confirmations = race(() -> payment(confirm, firstStaff), () -> payment(confirm, secondStaff));
+        assertThat(confirmations).extracting(body -> JsonPath.<String>read(body, "$.data.result"))
+                .containsExactlyInAnyOrder("CONFIRMED", "ALREADY_PAID");
+        String paidBy = JsonPath.read(confirmations.getFirst(), "$.data.paidBy");
+        String paidAt = JsonPath.read(confirmations.getFirst(), "$.data.paidAt");
+        assertThat(Instant.parse(paidAt)).isNotNull();
+        assertThat(paidBy).isEqualTo("CONFIRMED".equals(JsonPath.<String>read(confirmations.getFirst(), "$.data.result"))
+                ? Long.toString(firstStaffId) : Long.toString(userId("demo-bb-staff-2")));
+        assertThat(JsonPath.<String>read(confirmations.getLast(), "$.data.paidBy")).isEqualTo(paidBy);
+        assertThat(JsonPath.<String>read(confirmations.getLast(), "$.data.paidAt")).isEqualTo(paidAt);
+
+        mvc.perform(get(detail).header("Authorization", customer)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("READY"))
+                .andExpect(jsonPath("$.data.paymentStatus").value("PAID"))
+                .andExpect(jsonPath("$.data.pickupToken").value(pickup))
+                .andExpect(jsonPath("$.data.paidBy").doesNotHaveJsonPath());
+        mvc.perform(get(staffOrder(id)).header("Authorization", secondStaff)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.paidBy").value(paidBy))
+                .andExpect(jsonPath("$.data.pickupToken").doesNotHaveJsonPath());
+    }
+
+    private void makeReady(String id, String staff) throws Exception {
+        mvc.perform(authenticatedPost(staffOrder(id) + "/start", staff))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.status").value("PREPARING"));
+        mvc.perform(authenticatedPost(staffOrder(id) + "/ready", staff))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.status").value("READY"));
+    }
+
+    private String pickupToken(String id) {
+        return jdbc.sql("SELECT pickup_token FROM orders WHERE id = :id")
+                .param("id", Long.parseLong(id)).query(String.class).single();
+    }
+
+    private String payment(String path, String staff) throws Exception {
+        return mvc.perform(authenticatedPost(path, staff)).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
     }
 
     private String placeOrder(String bearer, long productId, int quantity, long total) throws Exception {
