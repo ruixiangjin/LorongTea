@@ -49,6 +49,12 @@ interface OrderMapper {
     List<OrderRow> listForStore(@Param("storeId") long storeId, @Param("status") OrderStatus status,
             @Param("oldestFirst") boolean oldestFirst, @Param("limit") int limit, @Param("offset") int offset);
 
+    @Update("""
+            UPDATE orders SET status = 'PREPARING', updated_at = UTC_TIMESTAMP(6)
+            WHERE store_id = #{storeId} AND id = #{orderId} AND status = 'CREATED' AND paid_at IS NULL
+            """)
+    int start(@Param("storeId") long storeId, @Param("orderId") long orderId);
+
     @Insert("""
             INSERT INTO orders (customer_id, store_id, idempotency_key, request_hash, total_cents)
             VALUES (#{customerId}, #{storeId}, #{key}, #{requestHash}, 0)

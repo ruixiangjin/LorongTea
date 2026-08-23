@@ -10,6 +10,7 @@ import jakarta.validation.constraints.PositiveOrZero;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -18,9 +19,11 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/staff/stores/{storeId}/orders")
 class StaffOrderController {
     private final OrderQueryService queries;
+    private final StaffOrderLifecycleService lifecycle;
 
-    StaffOrderController(OrderQueryService queries) {
+    StaffOrderController(OrderQueryService queries, StaffOrderLifecycleService lifecycle) {
         this.queries = queries;
+        this.lifecycle = lifecycle;
     }
 
     @GetMapping
@@ -35,5 +38,11 @@ class StaffOrderController {
     ApiResponse<OrderView> detail(@AuthenticationPrincipal AccountIdentity account,
             @PathVariable @Positive long storeId, @PathVariable @Positive long orderId) {
         return new ApiResponse<>(queries.storeDetail(account, storeId, orderId));
+    }
+
+    @PostMapping("/{orderId}/start")
+    ApiResponse<OrderView> start(@AuthenticationPrincipal AccountIdentity account,
+            @PathVariable @Positive long storeId, @PathVariable @Positive long orderId) {
+        return new ApiResponse<>(lifecycle.start(account, storeId, orderId));
     }
 }
