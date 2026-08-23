@@ -45,4 +45,10 @@ class StaffOrderController {
             @PathVariable @Positive long storeId, @PathVariable @Positive long orderId) {
         return new ApiResponse<>(lifecycle.start(account, storeId, orderId));
     }
+
+    @PostMapping("/{orderId}/ready")
+    ApiResponse<OrderView> markReady(@AuthenticationPrincipal AccountIdentity account,
+            @PathVariable @Positive long storeId, @PathVariable @Positive long orderId) {
+        return new ApiResponse<>(lifecycle.markReady(account, storeId, orderId));
+    }
 }

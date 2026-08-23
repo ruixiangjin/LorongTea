@@ -61,6 +61,12 @@ interface OrderMapper {
             """)
     int cancel(@Param("customerId") long customerId, @Param("orderId") long orderId);
 
+    @Update("""
+            UPDATE orders SET status = 'READY', pickup_token = #{token}, updated_at = UTC_TIMESTAMP(6)
+            WHERE store_id = #{storeId} AND id = #{orderId} AND status = 'PREPARING'
+            """)
+    int markReady(@Param("storeId") long storeId, @Param("orderId") long orderId, @Param("token") String token);
+
     @Insert("""
             INSERT INTO orders (customer_id, store_id, idempotency_key, request_hash, total_cents)
             VALUES (#{customerId}, #{storeId}, #{key}, #{requestHash}, 0)
