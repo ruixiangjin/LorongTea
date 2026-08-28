@@ -90,6 +90,11 @@ class OrderIT {
         jdbc.sql("UPDATE store_menu_item SET price_cents = 1000 WHERE store_id = 1 AND product_id = :product")
                 .param("product", first).update();
         assertThat(quantity(first)).isEqualTo(1);
+        String stalePriceKey = UUID.randomUUID().toString();
+        assertThatThrownBy(() -> checkout.create(customer, 1, stalePriceKey, "0".repeat(64),
+                new TreeMap<>(Map.of(first, 1)), 800))
+                .isInstanceOfSatisfying(ApiException.class, error -> assertThat(error.code()).isEqualTo("PRICE_CHANGED"));
+        assertThat(quantity(first)).isEqualTo(1);
         assertThat(orders.findItems(orderId)).containsExactly(new OrderItem(first, "Boba", 800, 2));
         assertThat(jdbc.sql("SELECT paid_at IS NULL AND paid_by IS NULL FROM orders WHERE id = :id")
                 .param("id", orderId).query(Boolean.class).single()).isTrue();
@@ -209,6 +214,91 @@ class OrderIT {
         mvc.perform(get(staffOrder(id)).header("Authorization", secondStaff)).andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.paidBy").value(paidBy))
                 .andExpect(jsonPath("$.data.pickupToken").doesNotHaveJsonPath());
+    }
+
+    @Test
+    void listsOrdersInStableOrderAndHidesOrdersOutsideTheCallerScope() throws Exception {
+        jdbc.sql("""
+                INSERT INTO app_user (username, password_hash, role)
+                SELECT 'other-customer', password_hash, role FROM app_user WHERE username = 'demo-customer'
+                """).update();
+        String owner = token("other-customer");
+        String other = token("demo-customer");
+        String staff = token("demo-bb-staff");
+        String otherStore = token("demo-pj-staff");
+        long product = product("History tea", 750, 2);
+        String first = placeOrder(owner, product, 1, 750);
+        String second = placeOrder(owner, product, 1, 750);
+        jdbc.sql("UPDATE orders SET created_at = '2000-01-01 00:00:00' WHERE customer_id = :owner")
+                .param("owner", userId("other-customer")).update();
+
+        mvc.perform(get("/api/v1/orders").header("Authorization", owner).param("limit", "1"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.length()").value(1))
+                .andExpect(jsonPath("$.data[0].id").value(second));
+        mvc.perform(get("/api/v1/orders").header("Authorization", owner).param("limit", "1").param("offset", "1"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data[0].id").value(first));
+        mvc.perform(get("/api/v1/orders/" + first).header("Authorization", owner))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.items[0].productName").value("History tea"));
+        mvc.perform(get("/api/v1/orders/" + first).header("Authorization", other)).andExpect(status().isNotFound());
+        mvc.perform(get("/api/v1/orders").header("Authorization", staff)).andExpect(status().isForbidden());
+        mvc.perform(authenticatedPost("/api/v1/staff/stores/2/orders/" + first + "/start", otherStore))
+                .andExpect(status().isNotFound());
+        mvc.perform(get("/api/v1/staff/stores/1/orders").header("Authorization", staff)
+                        .param("status", "CREATED").param("limit", "1"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data[0].id").value(first));
+        mvc.perform(get("/api/v1/staff/stores/2/orders/" + first).header("Authorization", otherStore))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void redeemsPaidPickupOnceAndUsesTheOrderLockWhenPaymentRaces() throws Exception {
+        String customer = token("demo-customer");
+        String staff = token("demo-bb-staff");
+        String otherStore = token("demo-pj-staff");
+        long product = product("Pickup tea", 1090, 1);
+        String id = placeOrder(customer, product, 1, 1090);
+        makeReady(id, staff);
+        String pickup = pickupToken(id);
+
+        mvc.perform(redeemRequest(1, staff, pickup)).andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("PAYMENT_REQUIRED"));
+        mvc.perform(redeemRequest(2, otherStore, pickup)).andExpect(status().isNotFound());
+        char last = pickup.charAt(pickup.length() - 1);
+        String wrongCase = pickup.substring(0, pickup.length() - 1)
+                + (Character.isUpperCase(last) ? Character.toLowerCase(last) : Character.toUpperCase(last));
+        mvc.perform(redeemRequest(1, staff, wrongCase)).andExpect(status().isNotFound());
+
+        String confirm = staffOrder(id) + "/confirm-payment";
+        var responses = race(() -> mvc.perform(authenticatedPost(confirm, staff)).andReturn().getResponse(),
+                () -> mvc.perform(redeemRequest(1, staff, " " + pickup + " ")).andReturn().getResponse());
+        assertThat(responses.getFirst().getStatus()).isEqualTo(200);
+        assertThat(JsonPath.<String>read(responses.getFirst().getContentAsString(), "$.data.result"))
+                .isEqualTo("CONFIRMED");
+        var pickupResponse = responses.getLast();
+        if (pickupResponse.getStatus() == 409) {
+            assertThat(JsonPath.<String>read(pickupResponse.getContentAsString(), "$.code")).isEqualTo("PAYMENT_REQUIRED");
+            mvc.perform(redeemRequest(1, staff, pickup)).andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.result").value("REDEEMED"))
+                    .andExpect(jsonPath("$.data.orderId").value(id));
+        } else {
+            assertThat(pickupResponse.getStatus()).isEqualTo(200);
+            assertThat(JsonPath.<String>read(pickupResponse.getContentAsString(), "$.data.result")).isEqualTo("REDEEMED");
+        }
+        mvc.perform(redeemRequest(1, staff, pickup)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.result").value("ALREADY_REDEEMED"))
+                .andExpect(jsonPath("$.data.orderId").value(id));
+        mvc.perform(authenticatedPost(confirm, staff)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.result").value("ALREADY_PAID"));
+        mvc.perform(get("/api/v1/orders/" + id).header("Authorization", customer)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("COMPLETED"))
+                .andExpect(jsonPath("$.data.pickupToken").doesNotHaveJsonPath());
+    }
+
+    private MockHttpServletRequestBuilder redeemRequest(long storeId, String bearer, String pickupToken) {
+        return authenticatedPost("/api/v1/staff/stores/" + storeId + "/orders/redeem", bearer)
+                .contentType(MediaType.APPLICATION_JSON).content("""
+                        {"pickupToken":"%s"}
+                        """.formatted(pickupToken));
     }
 
     private void makeReady(String id, String staff) throws Exception {

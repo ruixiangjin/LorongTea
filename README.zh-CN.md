@@ -2,7 +2,7 @@
 
 [English](README.md)
 
-南巷茶铺以马来西亚连锁奶茶店为背景。Spring Boot 后端提供武吉免登和八打灵再也两家店的菜单。店员登录后可以管理本店售价、上下架状态和库存。
+南巷茶铺以马来西亚连锁奶茶店为背景。Spring Boot API 服务武吉免登和八打灵再也两家门店。顾客可以下自提单，店员负责制作、到店收款和取餐核销。
 
 ## 本地运行
 
@@ -20,7 +20,7 @@ cd backend
 
 ## 接口
 
-后端地址为 `http://localhost:8080`。店员接口需要 `Authorization: Bearer <token>` 请求头。价格以马来西亚仙为单位，使用整数。
+后端地址为 `http://localhost:8080`。订单和店员接口需要 `Authorization: Bearer <token>` 请求头。价格以马来西亚仙为单位，使用整数。
 
 | 接口 | 用途 |
 | --- | --- |
@@ -31,3 +31,9 @@ cd backend
 | `PATCH /api/v1/staff/stores/{storeId}/menu-items/{productId}` | 修改 `priceCents` 或 `listed` |
 | `POST /api/v1/staff/stores/{storeId}/stock-adjustments` | 提交 `operationId`（UUID）、`productId`、`delta` 和 `reason`，重试时沿用同一操作 ID |
 | `GET /actuator/health/readiness` | 检查后端和数据库是否就绪 |
+
+### 订单
+
+顾客通过 `POST /api/v1/orders` 下单，请求头带 `Idempotency-Key`，请求体包含 `storeId`、`items` 和 `expectedTotalCents`。用 `GET /api/v1/orders` 查询历史，追加 `/{orderId}` 查看详情，或向 `/{orderId}/cancel` 发送 POST 取消订单。
+
+店员通过 `GET /api/v1/staff/stores/{storeId}/orders?status=CREATED` 查看待接单队列。在店员订单路径下，向 `/{orderId}/start`、`/{orderId}/ready` 和 `/{orderId}/confirm-payment` 发送 POST 完成接单、出餐和收款确认。收款后向 `POST /api/v1/staff/stores/{storeId}/orders/redeem` 提交顾客的 `pickupToken`。

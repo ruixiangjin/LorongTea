@@ -2,7 +2,7 @@
 
 [简体中文](README.zh-CN.md)
 
-Lorong Tea models a takeaway milk tea chain in Malaysia. The Spring Boot backend serves menus for Bukit Bintang and Petaling Jaya. Staff sign in to manage prices, listings and stock at their assigned store.
+Lorong Tea models a takeaway milk tea chain in Malaysia. The Spring Boot API serves the Bukit Bintang and Petaling Jaya stores. Customers place pickup orders, and staff prepare them and confirm payment at the store.
 
 ## Run locally
 
@@ -20,7 +20,7 @@ Flyway sets up MySQL on startup. The `local` profile loads sample menus and crea
 
 ## API
 
-The backend listens on `http://localhost:8080`. Staff routes require an `Authorization: Bearer <token>` header. Prices use integer MYR cents.
+The backend listens on `http://localhost:8080`. Order and staff routes require an `Authorization: Bearer <token>` header. Prices use integer MYR cents.
 
 | Endpoint | Description |
 | --- | --- |
@@ -31,3 +31,9 @@ The backend listens on `http://localhost:8080`. Staff routes require an `Authori
 | `PATCH /api/v1/staff/stores/{storeId}/menu-items/{productId}` | Update `priceCents` or `listed` |
 | `POST /api/v1/staff/stores/{storeId}/stock-adjustments` | Record a stock change with `operationId` (UUID), `productId`, `delta` and `reason`. Reuse the same ID when retrying |
 | `GET /actuator/health/readiness` | Check whether the backend and database are ready |
+
+### Orders
+
+Customers use `POST /api/v1/orders` with an `Idempotency-Key` and a body containing `storeId`, `items` and `expectedTotalCents`. Use `GET /api/v1/orders` for history and append `/{orderId}` for details or `/{orderId}/cancel` to cancel with POST.
+
+Staff use `GET /api/v1/staff/stores/{storeId}/orders?status=CREATED` for the pending queue. Under the staff orders path, send POST requests to `/{orderId}/start`, `/{orderId}/ready` and `/{orderId}/confirm-payment`. After payment, send the customer’s `pickupToken` to `POST /api/v1/staff/stores/{storeId}/orders/redeem`.
