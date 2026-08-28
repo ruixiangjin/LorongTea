@@ -3,3 +3,7 @@
 *.iml
 target/
 .env
+.gradle/
+build/
+local.properties
+.kotlin/
