@@ -17,7 +17,7 @@ import com.lorongtea.mobile.data.Store
 
 @Composable
 fun StoresScreen(
-    state: ListState<Store>,
+    state: RemoteState<List<Store>>,
     refresh: () -> Unit,
     select: ((Store) -> Unit)? = null,
     actions: @Composable androidx.compose.foundation.layout.RowScope.() -> Unit = {},
@@ -28,9 +28,9 @@ fun StoresScreen(
     }) {
         Column {
             LoadNotice(state.loading, state.error)
-            if (state.items?.isEmpty() == true) Text("No stores are available.")
+            if (state.data?.isEmpty() == true) Text("No stores are available.")
             LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                items(state.items.orEmpty(), key = { it.id }) { store ->
+                items(state.data.orEmpty(), key = { it.id }) { store ->
                     val name = when (store.code) {
                         "bukit-bintang" -> "Bukit Bintang"
                         "petaling-jaya" -> "Petaling Jaya"

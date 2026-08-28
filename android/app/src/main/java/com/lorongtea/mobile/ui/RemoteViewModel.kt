@@ -9,10 +9,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-data class ListState<T>(val items: List<T>? = null, val loading: Boolean = true, val error: String? = null)
+data class RemoteState<T>(val data: T? = null, val loading: Boolean = true, val error: String? = null)
 
-class ListViewModel<T>(private val load: suspend () -> List<T>) : ViewModel() {
-    private val mutable = MutableStateFlow(ListState<T>())
+class RemoteViewModel<T>(private val load: suspend () -> T) : ViewModel() {
+    private val mutable = MutableStateFlow(RemoteState<T>())
     val state = mutable.asStateFlow()
     private var refreshJob: Job? = null
 
@@ -25,7 +25,7 @@ class ListViewModel<T>(private val load: suspend () -> List<T>) : ViewModel() {
         refreshJob = viewModelScope.launch {
             mutable.value = mutable.value.copy(loading = true, error = null)
             try {
-                mutable.value = ListState(items = load(), loading = false)
+                mutable.value = RemoteState(data = load(), loading = false)
             } catch (error: ApiFailure) {
                 mutable.value = mutable.value.copy(loading = false, error = error.display())
             } catch (_: IOException) {
