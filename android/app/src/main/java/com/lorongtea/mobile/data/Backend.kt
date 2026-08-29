@@ -13,6 +13,7 @@ import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.Header
 import retrofit2.http.POST
+import retrofit2.http.Path
 
 data class Store(val id: String, val code: String, val name: String)
 
@@ -22,6 +23,9 @@ internal data class ErrorBody(val code: String?, val message: String?, val reque
 internal interface LorongTeaApi {
     @GET("api/v1/stores")
     suspend fun stores(): Envelope<List<Store>>
+
+    @GET("api/v1/stores/{storeId}/menu")
+    suspend fun menu(@Path("storeId") storeId: String): Envelope<List<MenuItem>>
 
     @POST("api/v1/auth/login")
     suspend fun login(@Body credentials: Credentials): Envelope<LoginResult>

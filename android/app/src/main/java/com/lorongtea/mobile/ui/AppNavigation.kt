@@ -1,11 +1,15 @@
 package com.lorongtea.mobile.ui
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -47,9 +51,33 @@ fun AppNavigation(app: LorongTeaApplication) {
             composable("stores") {
                 if (session.account?.role != Role.CUSTOMER) return@composable
                 val stores = viewModel { RemoteViewModel(app.catalog::stores) }
-                StoresScreen(stores.state.collectAsStateWithLifecycle().value, stores::refresh, actions = {
+                var lastStore by rememberSaveable { mutableStateOf<String?>(null) }
+                var proposedStore by rememberSaveable { mutableStateOf<String?>(null) }
+                fun openStore(storeId: String) {
+                    lastStore = storeId
+                    proposedStore = null
+                    nav.navigate("menu/$storeId")
+                }
+                StoresScreen(stores.state.collectAsStateWithLifecycle().value, stores::refresh, select = { store ->
+                    if (lastStore != null && lastStore != store.id) proposedStore = store.id else openStore(store.id)
+                }, actions = {
                     TextButton(onClick = app.sessions::signOut) { Text("Sign out") }
                 })
+                proposedStore?.let { storeId ->
+                    AlertDialog(
+                        onDismissRequest = { proposedStore = null },
+                        title = { Text("Switch stores?") },
+                        text = { Text("The menu and prices depend on the store.") },
+                        confirmButton = { TextButton(onClick = { openStore(storeId) }) { Text("Switch store") } },
+                        dismissButton = { TextButton(onClick = { proposedStore = null }) { Text("Stay here") } },
+                    )
+                }
+            }
+            composable("menu/{storeId}") { entry ->
+                if (session.account?.role != Role.CUSTOMER) return@composable
+                val storeId = requireNotNull(entry.arguments?.getString("storeId"))
+                val menu = viewModel { RemoteViewModel { app.catalog.menu(storeId) } }
+                MenuScreen(menu.state.collectAsStateWithLifecycle().value, menu::refresh, back = { nav.popBackStack() })
             }
         }
         navigation(startDestination = "staff-home", route = STAFF) {
