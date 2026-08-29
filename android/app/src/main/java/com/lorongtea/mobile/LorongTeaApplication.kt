@@ -5,6 +5,7 @@ import androidx.room.Room
 import com.lorongtea.mobile.data.Backend
 import com.lorongtea.mobile.data.CatalogRepository
 import com.lorongtea.mobile.data.CartRepository
+import com.lorongtea.mobile.data.CheckoutRepository
 import com.lorongtea.mobile.data.LorongDatabase
 import com.lorongtea.mobile.data.SessionRepository
 import com.lorongtea.mobile.data.SessionStore
@@ -19,4 +20,5 @@ class LorongTeaApplication : Application() {
         Room.databaseBuilder(this, LorongDatabase::class.java, "lorong-tea.db").build()
     }
     val carts by lazy { CartRepository(database) }
+    val checkout by lazy { CheckoutRepository(backend, carts, catalog) }
 }

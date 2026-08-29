@@ -2,6 +2,8 @@ package com.lorongtea.mobile.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -20,13 +22,15 @@ fun StoresScreen(
     state: RemoteState<List<Store>>,
     refresh: () -> Unit,
     select: ((Store) -> Unit)? = null,
-    actions: @Composable androidx.compose.foundation.layout.RowScope.() -> Unit = {},
+    actions: @Composable RowScope.() -> Unit = {},
+    shortcuts: @Composable RowScope.() -> Unit = {},
 ) {
     Page("Choose a store", actions = {
         TextButton(onClick = refresh, enabled = !state.loading) { Text("Refresh") }
         actions()
     }) {
         Column {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), content = shortcuts)
             LoadNotice(state.loading, state.error)
             if (state.data?.isEmpty() == true) Text("No stores are available.")
             LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {

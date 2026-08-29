@@ -7,10 +7,12 @@ class CartProblem(message: String) : Exception(message)
 
 class CartRepository(private val database: LorongDatabase) {
     private val dao = database.cart()
+    private val pending = database.pending()
 
     fun observe(accountId: String, storeId: String): Flow<List<CartLine>> = dao.observe(accountId, storeId)
 
     suspend fun add(accountId: String, storeId: String, item: MenuItem) = database.withTransaction {
+        requireEditable(accountId, storeId)
         if (!item.listed) throw CartProblem("This item is unavailable.")
         val previous = dao.find(accountId, storeId, item.productId)
         val quantity = previous?.quantity ?: 0
@@ -19,6 +21,7 @@ class CartRepository(private val database: LorongDatabase) {
     }
 
     suspend fun change(accountId: String, storeId: String, productId: String, delta: Int) = database.withTransaction {
+        requireEditable(accountId, storeId)
         val line = dao.find(accountId, storeId, productId) ?: return@withTransaction
         val quantity = line.quantity.toLong() + delta
         when {
@@ -27,6 +30,52 @@ class CartRepository(private val database: LorongDatabase) {
             else -> dao.save(line.copy(quantity = quantity.toInt()))
         }
     }
+
+    fun observePending(accountId: String, storeId: String): Flow<PendingCheckout?> = pending.observe(accountId, storeId)
+
+    fun observePending(accountId: String): Flow<List<PendingCheckout>> = pending.observeAccount(accountId)
+
+    internal suspend fun pending(accountId: String, storeId: String): PendingCheckout? = pending.find(accountId, storeId)
+
+    internal suspend fun prepare(checkout: PendingCheckout, reviewed: List<CartLine>) = database.withTransaction {
+        requireEditable(checkout.accountId, checkout.storeId)
+        if (dao.snapshot(checkout.accountId, checkout.storeId) != reviewed) {
+            throw CartProblem("Your cart changed. Review the current total and try again.")
+        }
+        pending.insert(checkout)
+    }
+
+    internal suspend fun complete(checkout: PendingCheckout): Unit = database.withTransaction {
+        if (pending.delete(checkout.accountId, checkout.storeId, checkout.key) == 1) {
+            dao.clear(checkout.accountId, checkout.storeId)
+        }
+    }
+
+    internal suspend fun reject(checkout: PendingCheckout) {
+        pending.delete(checkout.accountId, checkout.storeId, checkout.key)
+    }
+
+    internal suspend fun markPriceChanged(checkout: PendingCheckout) {
+        pending.markPriceChanged(checkout.accountId, checkout.storeId, checkout.key)
+    }
+
+    internal suspend fun reprice(checkout: PendingCheckout, menu: List<MenuItem>): Boolean = database.withTransaction {
+        if (pending.delete(checkout.accountId, checkout.storeId, checkout.key) == 0) return@withTransaction false
+        val current = menu.filter { it.listed }.associateBy { it.productId }
+        var unavailable = false
+        for (line in dao.snapshot(checkout.accountId, checkout.storeId)) {
+            val item = current[line.productId]
+            if (item == null) unavailable = true else dao.save(line.copy(name = item.name, priceCents = item.priceCents))
+        }
+        unavailable
+    }
+
+    private suspend fun requireEditable(accountId: String, storeId: String) {
+        if (pending.find(accountId, storeId) != null) {
+            throw CartProblem("Finish confirming the previous order before changing this cart.")
+        }
+    }
+
 }
 
 internal fun List<CartLine>.totalCents(): Long? {

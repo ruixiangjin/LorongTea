@@ -6,6 +6,7 @@ import java.io.IOException
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.delay
 import okhttp3.OkHttpClient
+import okhttp3.RequestBody
 import retrofit2.HttpException
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
@@ -32,6 +33,14 @@ internal interface LorongTeaApi {
 
     @GET("api/v1/staff/store")
     suspend fun assignedStore(@Header("Authorization") authorization: String): Envelope<Store>
+
+    @POST("api/v1/orders")
+    suspend fun placeOrder(
+        @Header("Authorization") authorization: String,
+        @Header("Idempotency-Key") key: String,
+        @Body request: RequestBody,
+    ): Envelope<PlacedOrder>
+
 }
 
 class ApiFailure(

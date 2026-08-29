@@ -62,6 +62,8 @@ fun AppNavigation(app: LorongTeaApplication) {
                     if (lastStore != null && lastStore != store.id) proposedStore = store.id else openStore(store.id)
                 }, actions = {
                     TextButton(onClick = app.sessions::signOut) { Text("Sign out") }
+                }, shortcuts = {
+                    TextButton(onClick = { nav.navigate("pending") }) { Text("Pending orders") }
                 })
                 proposedStore?.let { storeId ->
                     AlertDialog(
@@ -88,8 +90,25 @@ fun AppNavigation(app: LorongTeaApplication) {
             composable("cart/{storeId}") { entry ->
                 val account = session.account?.takeIf { it.role == Role.CUSTOMER } ?: return@composable
                 val storeId = requireNotNull(entry.arguments?.getString("storeId"))
-                val cart = viewModel { CartViewModel(app.carts, account.userId, storeId) }
-                CartScreen(cart.state.collectAsStateWithLifecycle().value, cart::change, back = { nav.popBackStack() })
+                val cart = viewModel { CartViewModel(app.carts, app.checkout, account, storeId) }
+                CartScreen(
+                    cart.state.collectAsStateWithLifecycle().value,
+                    change = cart::change,
+                    review = cart::review,
+                    dismissReview = cart::dismissReview,
+                    confirm = cart::confirm,
+                    recover = cart::recover,
+                    back = { nav.popBackStack() },
+                )
+            }
+            composable("pending") {
+                val account = session.account?.takeIf { it.role == Role.CUSTOMER } ?: return@composable
+                val pending = viewModel { PendingViewModel(app.carts, account.userId) }
+                PendingScreen(
+                    pending.state.collectAsStateWithLifecycle().value,
+                    open = { storeId -> nav.navigate("cart/$storeId") },
+                    back = { nav.popBackStack() },
+                )
             }
         }
         navigation(startDestination = "staff-home", route = STAFF) {
