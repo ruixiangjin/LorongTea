@@ -24,15 +24,17 @@ class RemoteViewModel<T>(private val load: suspend () -> T) : ViewModel() {
         if (refreshJob?.isActive == true) return
         refreshJob = viewModelScope.launch {
             mutable.value = mutable.value.copy(loading = true, error = null)
-            try {
-                mutable.value = RemoteState(data = load(), loading = false)
-            } catch (error: ApiFailure) {
-                mutable.value = mutable.value.copy(loading = false, error = error.display())
-            } catch (_: IOException) {
-                mutable.value = mutable.value.copy(loading = false, error = "Connection unavailable. Try refreshing.")
-            }
+            mutable.value = loadRemote(mutable.value, load)
         }
     }
+}
+
+internal suspend fun <T> loadRemote(previous: RemoteState<T>, load: suspend () -> T): RemoteState<T> = try {
+    RemoteState(data = load(), loading = false)
+} catch (error: ApiFailure) {
+    previous.copy(loading = false, error = error.display())
+} catch (_: IOException) {
+    previous.copy(loading = false, error = "Connection unavailable. Try refreshing.")
 }
 
 internal fun ApiFailure.display(): String = if (requestId == null) {

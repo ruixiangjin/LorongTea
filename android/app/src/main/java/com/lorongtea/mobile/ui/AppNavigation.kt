@@ -67,17 +67,29 @@ fun AppNavigation(app: LorongTeaApplication) {
                     AlertDialog(
                         onDismissRequest = { proposedStore = null },
                         title = { Text("Switch stores?") },
-                        text = { Text("The menu and prices depend on the store.") },
+                        text = { Text("Each store has its own menu, prices and cart.") },
                         confirmButton = { TextButton(onClick = { openStore(storeId) }) { Text("Switch store") } },
                         dismissButton = { TextButton(onClick = { proposedStore = null }) { Text("Stay here") } },
                     )
                 }
             }
             composable("menu/{storeId}") { entry ->
-                if (session.account?.role != Role.CUSTOMER) return@composable
+                val account = session.account?.takeIf { it.role == Role.CUSTOMER } ?: return@composable
                 val storeId = requireNotNull(entry.arguments?.getString("storeId"))
-                val menu = viewModel { RemoteViewModel { app.catalog.menu(storeId) } }
-                MenuScreen(menu.state.collectAsStateWithLifecycle().value, menu::refresh, back = { nav.popBackStack() })
+                val menu = viewModel { MenuViewModel(app.catalog, app.carts, account.userId, storeId) }
+                MenuScreen(
+                    menu.state.collectAsStateWithLifecycle().value,
+                    menu::refresh,
+                    menu::add,
+                    cart = { nav.navigate("cart/$storeId") },
+                    back = { nav.popBackStack() },
+                )
+            }
+            composable("cart/{storeId}") { entry ->
+                val account = session.account?.takeIf { it.role == Role.CUSTOMER } ?: return@composable
+                val storeId = requireNotNull(entry.arguments?.getString("storeId"))
+                val cart = viewModel { CartViewModel(app.carts, account.userId, storeId) }
+                CartScreen(cart.state.collectAsStateWithLifecycle().value, cart::change, back = { nav.popBackStack() })
             }
         }
         navigation(startDestination = "staff-home", route = STAFF) {
