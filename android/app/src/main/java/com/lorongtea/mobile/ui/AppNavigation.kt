@@ -10,7 +10,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.compose.NavHost
@@ -19,6 +21,7 @@ import androidx.navigation.compose.navigation
 import androidx.navigation.compose.rememberNavController
 import com.lorongtea.mobile.LorongTeaApplication
 import com.lorongtea.mobile.data.Role
+import kotlinx.coroutines.awaitCancellation
 
 private const val LOGIN = "login"
 private const val CUSTOMER = "customer"
@@ -123,6 +126,16 @@ fun AppNavigation(app: LorongTeaApplication) {
                 val account = session.account?.takeIf { it.role == Role.CUSTOMER } ?: return@composable
                 val orderId = requireNotNull(entry.arguments?.getString("orderId"))
                 val detail = viewModel { OrderDetailViewModel(app.orders, account, orderId) }
+                LaunchedEffect(entry, detail) {
+                    entry.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                        detail.resume()
+                        try {
+                            awaitCancellation()
+                        } finally {
+                            detail.pause()
+                        }
+                    }
+                }
                 OrderDetailScreen(
                     detail.state.collectAsStateWithLifecycle().value,
                     refresh = detail::refresh,

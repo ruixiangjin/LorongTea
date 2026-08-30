@@ -28,15 +28,21 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lorongtea.mobile.data.ApiFailure
 import com.lorongtea.mobile.data.Order
-import com.lorongtea.mobile.data.OrderRepository
+import com.lorongtea.mobile.data.OrderDetailSource
 import com.lorongtea.mobile.data.OrderStatus
 import com.lorongtea.mobile.data.PaymentStatus
 import com.lorongtea.mobile.data.Session
 import java.io.IOException
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withTimeoutOrNull
 
 data class OrderDetailState(
     val order: Order? = null,
@@ -46,27 +52,57 @@ data class OrderDetailState(
 )
 
 class OrderDetailViewModel(
-    private val repository: OrderRepository,
+    private val repository: OrderDetailSource,
     private val account: Session,
     private val orderId: String,
 ) : ViewModel() {
     private val mutable = MutableStateFlow(OrderDetailState())
     val state = mutable.asStateFlow()
-    private var loadingJob: Job? = null
+    private val refreshRequests = Channel<Unit>(Channel.CONFLATED)
+    private val requestLock = Mutex()
+    private var polling: Job? = null
 
-    init { refresh() }
+    fun resume() {
+        if (polling?.isActive == true) return
+        polling = viewModelScope.launch {
+            while (true) {
+                refreshRequests.tryReceive()
+                load()
+                if (mutable.value.order?.status.isTerminal()) {
+                    refreshRequests.receive()
+                } else {
+                    withTimeoutOrNull(POLL_INTERVAL_MS) { refreshRequests.receive() }
+                }
+            }
+        }
+    }
+
+    fun pause() {
+        polling?.cancel()
+        polling = null
+    }
 
     fun refresh() {
-        if (mutable.value.cancelling || loadingJob?.isActive == true) return
-        loadingJob = viewModelScope.launch {
-            mutable.value = mutable.value.copy(loading = true, error = null)
-            try {
-                mutable.value = OrderDetailState(order = repository.detail(account, orderId))
-            } catch (error: ApiFailure) {
-                mutable.value = mutable.value.copy(loading = false, error = error.display())
-            } catch (_: IOException) {
-                mutable.value = mutable.value.copy(loading = false, error = "Connection unavailable. Try refreshing.")
-            }
+        if (!mutable.value.loading && !mutable.value.cancelling) refreshRequests.trySend(Unit)
+    }
+
+    private suspend fun load() = requestLock.withLock {
+        if (mutable.value.cancelling) return@withLock
+        mutable.value = mutable.value.copy(loading = true)
+        try {
+            val order = repository.detail(account, orderId)
+            currentCoroutineContext().ensureActive()
+            mutable.value = OrderDetailState(order = order)
+        } catch (error: ApiFailure) {
+            currentCoroutineContext().ensureActive()
+            mutable.value = mutable.value.copy(error = error.display())
+        } catch (_: IOException) {
+            currentCoroutineContext().ensureActive()
+            val message = if (mutable.value.order == null) "Connection unavailable. Try refreshing."
+            else "Connection unavailable. Showing the last confirmed state."
+            mutable.value = mutable.value.copy(error = message)
+        } finally {
+            mutable.value = mutable.value.copy(loading = false)
         }
     }
 
@@ -75,16 +111,27 @@ class OrderDetailViewModel(
         if (current.cancelling || current.loading || current.order?.status != OrderStatus.CREATED) return
         mutable.value = current.copy(cancelling = true, error = null)
         viewModelScope.launch {
-            try {
-                val cancelled = repository.cancel(account, orderId)
-                mutable.value = OrderDetailState(order = cancelled.copy(items = current.order.items))
-            } catch (error: ApiFailure) {
-                mutable.value = current.copy(error = error.display())
-            } catch (_: IOException) {
-                mutable.value = current.copy(error = "Cancellation could not be confirmed. Refresh the order.")
+            requestLock.withLock {
+                try {
+                    val cancelled = repository.cancel(account, orderId)
+                    mutable.value = OrderDetailState(order = cancelled.copy(items = current.order.items))
+                } catch (error: ApiFailure) {
+                    mutable.value = current.copy(error = error.display())
+                    refreshRequests.trySend(Unit)
+                } catch (_: IOException) {
+                    mutable.value = current.copy(error = "Cancellation could not be confirmed. Refresh the order.")
+                    refreshRequests.trySend(Unit)
+                }
             }
         }
     }
+
+    private fun OrderStatus?.isTerminal() = this == OrderStatus.COMPLETED || this == OrderStatus.CANCELLED
+
+    private companion object {
+        const val POLL_INTERVAL_MS = 5_000L
+    }
+
 }
 
 @Composable
@@ -104,7 +151,11 @@ fun OrderDetailScreen(state: OrderDetailState, refresh: () -> Unit, cancel: () -
             Card(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(order.status.label(), style = MaterialTheme.typography.titleLarge)
-                    Text(if (order.paymentStatus == PaymentStatus.PAID) "Paid" else "Awaiting payment at the store")
+                    Text(when {
+                        order.paymentStatus == PaymentStatus.PAID -> "Paid"
+                        order.status == OrderStatus.CANCELLED -> "Unpaid"
+                        else -> "Awaiting payment at the store"
+                    })
                     Text("Total ${money(order.totalCents)}")
                 }
             }

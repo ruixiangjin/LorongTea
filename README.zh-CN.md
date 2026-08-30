@@ -18,6 +18,10 @@ cd backend
 
 启动时，Flyway 初始化 MySQL。`local` 配置会载入示例菜单，并使用设定的演示密码创建 `demo-customer`、`demo-bb-staff`、`demo-bb-staff-2` 和 `demo-pj-staff`。已有账号保留原密码。
 
+## Android
+
+在 Android Studio 打开 `android/`，使用 JDK 17、Android SDK 36 和 Build Tools 36.0.0。按上面的步骤启动后端，再在 Android 模拟器运行 `app`。调试版连接 `http://10.0.2.2:8080`，可用本地演示账号登录。
+
 ## 接口
 
 后端地址为 `http://localhost:8080`。订单和店员接口需要 `Authorization: Bearer <token>` 请求头。价格以马来西亚仙为单位，使用整数。

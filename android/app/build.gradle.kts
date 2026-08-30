@@ -51,6 +51,8 @@ ksp {
 }
 
 dependencies {
+    testImplementation(libs.junit)
+    testImplementation(libs.coroutines.test)
     implementation(libs.room.runtime)
     ksp(libs.room.compiler)
     implementation(platform(libs.compose.bom))

@@ -15,13 +15,18 @@ data class Order(
     val pickupToken: String?,
 )
 
-class OrderRepository(private val backend: Backend) {
+interface OrderDetailSource {
+    suspend fun detail(account: Session, orderId: String): Order
+    suspend fun cancel(account: Session, orderId: String): Order
+}
+
+class OrderRepository(private val backend: Backend) : OrderDetailSource {
     suspend fun history(account: Session, limit: Int, offset: Int): List<Order> =
         backend.request(read = true, session = account) { orders(account.authorization, limit, offset).data }
 
-    suspend fun detail(account: Session, orderId: String): Order =
+    override suspend fun detail(account: Session, orderId: String): Order =
         backend.request(read = true, session = account) { order(account.authorization, orderId).data }
 
-    suspend fun cancel(account: Session, orderId: String): Order =
+    override suspend fun cancel(account: Session, orderId: String): Order =
         backend.request(read = false, session = account) { cancel(account.authorization, orderId).data }
 }

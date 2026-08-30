@@ -18,6 +18,10 @@ cd backend
 
 Flyway sets up MySQL on startup. The `local` profile loads sample menus and creates `demo-customer`, `demo-bb-staff`, `demo-bb-staff-2` and `demo-pj-staff` with the chosen demo password. Existing accounts retain their passwords.
 
+## Android
+
+Open `android/` in Android Studio with JDK 17, Android SDK 36 and Build Tools 36.0.0. Start the backend as shown above, then run `app` on an Android emulator. The debug build connects to `http://10.0.2.2:8080`. Sign in with a local demo account.
+
 ## API
 
 The backend listens on `http://localhost:8080`. Order and staff routes require an `Authorization: Bearer <token>` header. Prices use integer MYR cents.
