@@ -15,6 +15,7 @@ import retrofit2.http.GET
 import retrofit2.http.Header
 import retrofit2.http.POST
 import retrofit2.http.Path
+import retrofit2.http.Query
 
 data class Store(val id: String, val code: String, val name: String)
 
@@ -40,6 +41,25 @@ internal interface LorongTeaApi {
         @Header("Idempotency-Key") key: String,
         @Body request: RequestBody,
     ): Envelope<PlacedOrder>
+
+    @GET("api/v1/orders")
+    suspend fun orders(
+        @Header("Authorization") authorization: String,
+        @Query("limit") limit: Int,
+        @Query("offset") offset: Int,
+    ): Envelope<List<Order>>
+
+    @GET("api/v1/orders/{orderId}")
+    suspend fun order(
+        @Header("Authorization") authorization: String,
+        @Path("orderId") orderId: String,
+    ): Envelope<Order>
+
+    @POST("api/v1/orders/{orderId}/cancel")
+    suspend fun cancel(
+        @Header("Authorization") authorization: String,
+        @Path("orderId") orderId: String,
+    ): Envelope<Order>
 
 }
 

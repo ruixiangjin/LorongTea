@@ -63,6 +63,7 @@ fun AppNavigation(app: LorongTeaApplication) {
                 }, actions = {
                     TextButton(onClick = app.sessions::signOut) { Text("Sign out") }
                 }, shortcuts = {
+                    TextButton(onClick = { nav.navigate("orders") }) { Text("My orders") }
                     TextButton(onClick = { nav.navigate("pending") }) { Text("Pending orders") }
                 })
                 proposedStore?.let { storeId ->
@@ -91,13 +92,41 @@ fun AppNavigation(app: LorongTeaApplication) {
                 val account = session.account?.takeIf { it.role == Role.CUSTOMER } ?: return@composable
                 val storeId = requireNotNull(entry.arguments?.getString("storeId"))
                 val cart = viewModel { CartViewModel(app.carts, app.checkout, account, storeId) }
+                val state by cart.state.collectAsStateWithLifecycle()
+                LaunchedEffect(state.checkout.orderId) {
+                    state.checkout.orderId?.let { orderId ->
+                        nav.navigate("order/$orderId") { popUpTo(entry.destination.id) { inclusive = true } }
+                    }
+                }
                 CartScreen(
-                    cart.state.collectAsStateWithLifecycle().value,
+                    state,
                     change = cart::change,
                     review = cart::review,
                     dismissReview = cart::dismissReview,
                     confirm = cart::confirm,
                     recover = cart::recover,
+                    back = { nav.popBackStack() },
+                )
+            }
+            composable("orders") {
+                val account = session.account?.takeIf { it.role == Role.CUSTOMER } ?: return@composable
+                val orders = viewModel { OrdersViewModel(app.orders, account) }
+                OrdersScreen(
+                    orders.state.collectAsStateWithLifecycle().value,
+                    refresh = orders::refresh,
+                    more = orders::more,
+                    open = { orderId -> nav.navigate("order/$orderId") },
+                    back = { nav.popBackStack() },
+                )
+            }
+            composable("order/{orderId}") { entry ->
+                val account = session.account?.takeIf { it.role == Role.CUSTOMER } ?: return@composable
+                val orderId = requireNotNull(entry.arguments?.getString("orderId"))
+                val detail = viewModel { OrderDetailViewModel(app.orders, account, orderId) }
+                OrderDetailScreen(
+                    detail.state.collectAsStateWithLifecycle().value,
+                    refresh = detail::refresh,
+                    cancel = detail::cancel,
                     back = { nav.popBackStack() },
                 )
             }

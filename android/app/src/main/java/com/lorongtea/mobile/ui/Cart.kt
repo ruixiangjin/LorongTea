@@ -150,7 +150,6 @@ fun CartScreen(
             } else if (lines.isNotEmpty()) {
                 Button(onClick = review, enabled = editable && total != null) { Text("Review order") }
             }
-            state.checkout.orderId?.let { Text("Order #$it confirmed.") }
         }
     }
     state.checkout.review?.totalCents()?.let { total ->
