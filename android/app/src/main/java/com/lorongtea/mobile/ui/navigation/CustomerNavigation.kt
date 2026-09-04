@@ -7,22 +7,29 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
 import com.lorongtea.mobile.LorongTeaApplication
+import com.lorongtea.mobile.R
+import com.lorongtea.mobile.data.Store
 import com.lorongtea.mobile.data.Role
 import com.lorongtea.mobile.data.SessionState
 import com.lorongtea.mobile.ui.catalog.MenuScreen
 import com.lorongtea.mobile.ui.catalog.MenuViewModel
 import com.lorongtea.mobile.ui.catalog.StoresScreen
+import com.lorongtea.mobile.ui.catalog.storeName
 import com.lorongtea.mobile.ui.checkout.CartScreen
 import com.lorongtea.mobile.ui.checkout.CartViewModel
 import com.lorongtea.mobile.ui.checkout.PendingScreen
@@ -41,9 +48,9 @@ internal fun NavGraphBuilder.customerNavigation(
 ) {
     val session by sessionState
     navigation(startDestination = "stores", route = CUSTOMER) {
-        composable("stores") {
+        composable("stores") { entry ->
             if (session.account?.role != Role.CUSTOMER) return@composable
-            val stores = viewModel { RemoteViewModel(app.catalog::stores) }
+            val stores = storeDirectory(app, nav, entry)
             var lastStore by rememberSaveable { mutableStateOf<String?>(null) }
             var proposedStore by rememberSaveable { mutableStateOf<String?>(null) }
             fun openStore(storeId: String) {
@@ -51,21 +58,23 @@ internal fun NavGraphBuilder.customerNavigation(
                 proposedStore = null
                 nav.navigate("menu/$storeId")
             }
-            StoresScreen(stores.state.collectAsStateWithLifecycle().value, stores::refresh, select = { store ->
-                if (lastStore != null && lastStore != store.id) proposedStore = store.id else openStore(store.id)
-            }, actions = {
-                TextButton(onClick = app.sessions::signOut) { Text("Sign out") }
-            }, shortcuts = {
-                TextButton(onClick = { nav.navigate("orders") }) { Text("My orders") }
-                TextButton(onClick = { nav.navigate("pending") }) { Text("Pending orders") }
-            })
+            StoresScreen(
+                state = stores.state.collectAsStateWithLifecycle().value,
+                refresh = stores::refresh,
+                select = { store ->
+                    if (lastStore != null && lastStore != store.id) proposedStore = store.id else openStore(store.id)
+                },
+                signOut = app.sessions::signOut,
+                openOrders = { nav.navigate("orders") },
+                openPending = { nav.navigate("pending") },
+            )
             proposedStore?.let { storeId ->
                 AlertDialog(
                     onDismissRequest = { proposedStore = null },
-                    title = { Text("Switch stores?") },
-                    text = { Text("Each store has its own menu, prices and cart.") },
-                    confirmButton = { TextButton(onClick = { openStore(storeId) }) { Text("Switch store") } },
-                    dismissButton = { TextButton(onClick = { proposedStore = null }) { Text("Stay here") } },
+                    title = { Text(stringResource(R.string.switch_store_title)) },
+                    text = { Text(stringResource(R.string.switch_store_description)) },
+                    confirmButton = { TextButton(onClick = { openStore(storeId) }) { Text(stringResource(R.string.switch_store)) } },
+                    dismissButton = { TextButton(onClick = { proposedStore = null }) { Text(stringResource(R.string.stay_here)) } },
                 )
             }
         }
@@ -73,10 +82,12 @@ internal fun NavGraphBuilder.customerNavigation(
             val account = session.account?.takeIf { it.role == Role.CUSTOMER } ?: return@composable
             val storeId = requireNotNull(entry.arguments?.getString("storeId"))
             val menu = viewModel { MenuViewModel(app.catalog, app.carts, account.userId, storeId) }
+            val stores by storeDirectory(app, nav, entry).state.collectAsStateWithLifecycle()
             MenuScreen(
-                menu.state.collectAsStateWithLifecycle().value,
-                menu::refresh,
-                menu::add,
+                state = menu.state.collectAsStateWithLifecycle().value,
+                store = storeName(stores.data.orEmpty(), storeId),
+                refresh = menu::refresh,
+                add = menu::add,
                 cart = { nav.navigate("cart/$storeId") },
                 back = { nav.popBackStack() },
             )
@@ -143,4 +154,14 @@ internal fun NavGraphBuilder.customerNavigation(
             )
         }
     }
+}
+
+@Composable
+private fun storeDirectory(
+    app: LorongTeaApplication,
+    nav: NavHostController,
+    entry: NavBackStackEntry,
+): RemoteViewModel<List<Store>> {
+    val customer = remember(entry) { nav.getBackStackEntry(CUSTOMER) }
+    return viewModel(viewModelStoreOwner = customer) { RemoteViewModel(app.catalog::stores) }
 }
