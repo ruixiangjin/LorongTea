@@ -5,7 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import com.lorongtea.mobile.ui.navigation.AppNavigation
-import com.lorongtea.mobile.ui.components.LorongTheme
+import com.lorongtea.mobile.ui.theme.LorongTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {

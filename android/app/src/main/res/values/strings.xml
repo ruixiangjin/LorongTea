@@ -1,3 +1,16 @@
 <resources>
     <string name="app_name">Lorong Tea</string>
+    <string name="navigate_back">Go back</string>
+    <string name="refresh">Refresh</string>
+    <string name="retry">Try again</string>
+    <string name="sign_out">Sign out</string>
+    <string name="sign_in">Sign in</string>
+    <string name="signing_in">Signing in…</string>
+    <string name="username">Username</string>
+    <string name="password">Password</string>
+    <string name="session_expired">Your session expired. Sign in again.</string>
+    <string name="brand_name">Lorong Tea</string>
+    <string name="brand_tagline">Order ahead. Pick up in store.</string>
+    <string name="staff_home">Your store</string>
+    <string name="staff_assigned_store">Assigned store</string>
 </resources>
