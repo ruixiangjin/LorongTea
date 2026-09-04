@@ -1,4 +1,4 @@
-package com.lorongtea.mobile.ui
+package com.lorongtea.mobile.ui.catalog
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -16,6 +16,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.lorongtea.mobile.data.Store
+import com.lorongtea.mobile.ui.common.RemoteState
+import com.lorongtea.mobile.ui.components.LoadNotice
+import com.lorongtea.mobile.ui.components.Page
 
 @Composable
 fun StoresScreen(

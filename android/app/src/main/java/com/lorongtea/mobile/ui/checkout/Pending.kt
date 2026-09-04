@@ -1,4 +1,4 @@
-package com.lorongtea.mobile.ui
+package com.lorongtea.mobile.ui.checkout
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -15,6 +15,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lorongtea.mobile.data.CartRepository
 import com.lorongtea.mobile.data.PendingCheckout
+import com.lorongtea.mobile.ui.components.LoadNotice
+import com.lorongtea.mobile.ui.components.Page
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
 

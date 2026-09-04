@@ -1,4 +1,4 @@
-package com.lorongtea.mobile.ui
+package com.lorongtea.mobile.ui.checkout
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -26,6 +26,10 @@ import com.lorongtea.mobile.data.CheckoutRepository
 import com.lorongtea.mobile.data.PendingCheckout
 import com.lorongtea.mobile.data.Session
 import com.lorongtea.mobile.data.totalCents
+import com.lorongtea.mobile.ui.common.display
+import com.lorongtea.mobile.ui.common.money
+import com.lorongtea.mobile.ui.components.LoadNotice
+import com.lorongtea.mobile.ui.components.Page
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine

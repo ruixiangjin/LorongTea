@@ -1,4 +1,4 @@
-package com.lorongtea.mobile.ui
+package com.lorongtea.mobile.ui.orders
 
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -32,6 +32,10 @@ import com.lorongtea.mobile.data.OrderDetailSource
 import com.lorongtea.mobile.data.OrderStatus
 import com.lorongtea.mobile.data.PaymentStatus
 import com.lorongtea.mobile.data.Session
+import com.lorongtea.mobile.ui.common.display
+import com.lorongtea.mobile.ui.common.money
+import com.lorongtea.mobile.ui.components.LoadNotice
+import com.lorongtea.mobile.ui.components.Page
 import java.io.IOException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel

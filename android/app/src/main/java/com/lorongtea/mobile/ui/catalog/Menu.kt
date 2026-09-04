@@ -1,4 +1,4 @@
-package com.lorongtea.mobile.ui
+package com.lorongtea.mobile.ui.catalog
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -20,7 +20,11 @@ import com.lorongtea.mobile.data.CartProblem
 import com.lorongtea.mobile.data.CartRepository
 import com.lorongtea.mobile.data.CatalogRepository
 import com.lorongtea.mobile.data.MenuItem
-import java.util.Locale
+import com.lorongtea.mobile.ui.common.RemoteState
+import com.lorongtea.mobile.ui.common.loadRemote
+import com.lorongtea.mobile.ui.common.money
+import com.lorongtea.mobile.ui.components.LoadNotice
+import com.lorongtea.mobile.ui.components.Page
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -102,5 +106,3 @@ fun MenuScreen(
         }
     }
 }
-
-internal fun money(cents: Long): String = String.format(Locale.ROOT, "RM %d.%02d", cents / 100, cents % 100)

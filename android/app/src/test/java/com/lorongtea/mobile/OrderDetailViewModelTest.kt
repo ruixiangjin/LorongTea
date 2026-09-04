@@ -7,7 +7,7 @@ import com.lorongtea.mobile.data.OrderStatus
 import com.lorongtea.mobile.data.PaymentStatus
 import com.lorongtea.mobile.data.Role
 import com.lorongtea.mobile.data.Session
-import com.lorongtea.mobile.ui.OrderDetailViewModel
+import com.lorongtea.mobile.ui.orders.OrderDetailViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.cancel
