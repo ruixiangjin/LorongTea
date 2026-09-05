@@ -59,4 +59,14 @@
     <string name="order_reprice_description">Refresh prices to review your updated total.</string>
     <string name="order_retry">Retry order</string>
     <string name="order_refresh_prices">Refresh prices</string>
+    <string name="orders_empty">You have no orders yet.</string>
+    <string name="orders_load_more">Load more</string>
+    <string name="order_number">Order #%1$s</string>
+    <string name="order_created">Waiting for the store</string>
+    <string name="order_preparing">Preparing your drinks</string>
+    <string name="order_ready">Ready for pickup</string>
+    <string name="order_collected">Collected</string>
+    <string name="order_cancelled">Cancelled</string>
+    <string name="pending_empty">You have no checkouts awaiting confirmation.</string>
+    <string name="pending_description">Reopen a checkout to recover the result or review updated prices.</string>
 </resources>

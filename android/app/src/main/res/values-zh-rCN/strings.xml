@@ -59,4 +59,14 @@
     <string name="order_reprice_description">刷新价格后，请重新核对订单金额。</string>
     <string name="order_retry">重试订单</string>
     <string name="order_refresh_prices">刷新价格</string>
+    <string name="orders_empty">你还没有订单。</string>
+    <string name="orders_load_more">加载更多</string>
+    <string name="order_number">订单 #%1$s</string>
+    <string name="order_created">等待门店接单</string>
+    <string name="order_preparing">正在制作</string>
+    <string name="order_ready">饮品已备好</string>
+    <string name="order_collected">已取茶</string>
+    <string name="order_cancelled">已取消</string>
+    <string name="pending_empty">当前没有待确认订单。</string>
+    <string name="pending_description">打开待确认订单，找回下单结果或核对更新后的价格。</string>
 </resources>

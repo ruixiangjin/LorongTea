@@ -1,28 +1,39 @@
 package com.lorongtea.mobile.ui.orders
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Card
+import androidx.compose.material3.Surface
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.lorongtea.mobile.R
 import com.lorongtea.mobile.data.ApiFailure
 import com.lorongtea.mobile.data.Order
 import com.lorongtea.mobile.data.OrderRepository
 import com.lorongtea.mobile.data.OrderStatus
 import com.lorongtea.mobile.data.Session
+import com.lorongtea.mobile.data.Store
+import com.lorongtea.mobile.ui.catalog.storeName
 import com.lorongtea.mobile.ui.common.display
 import com.lorongtea.mobile.ui.common.money
+import com.lorongtea.mobile.ui.components.EmptyNotice
 import com.lorongtea.mobile.ui.components.LoadNotice
+import com.lorongtea.mobile.ui.components.RefreshAction
+import com.lorongtea.mobile.ui.components.StatusLabel
+import com.lorongtea.mobile.ui.components.StatusTone
 import com.lorongtea.mobile.ui.components.Page
 import java.io.IOException
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -73,35 +84,74 @@ class OrdersViewModel(private val repository: OrderRepository, private val accou
 }
 
 @Composable
-fun OrdersScreen(state: OrderHistory, refresh: () -> Unit, more: () -> Unit, open: (String) -> Unit, back: () -> Unit) {
-    Page("My orders", back = back, actions = {
-        TextButton(onClick = refresh, enabled = !state.loading) { Text("Refresh") }
+fun OrdersScreen(
+    state: OrderHistory,
+    stores: List<Store>,
+    refresh: () -> Unit,
+    more: () -> Unit,
+    open: (String) -> Unit,
+    back: () -> Unit,
+) {
+    Page(stringResource(R.string.my_orders), back = back, actions = {
+        RefreshAction(refresh, enabled = !state.loading)
     }) {
-        Column {
-            LoadNotice(state.loading, state.error)
-            if (state.orders?.isEmpty() == true) Text("You have no orders.")
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                items(state.orders.orEmpty(), key = { it.id }) { order ->
-                    Card(onClick = { open(order.id) }, modifier = Modifier.fillMaxWidth()) {
-                        Column(Modifier.padding(16.dp)) {
-                            Text("Order #${order.id}", style = MaterialTheme.typography.titleMedium)
-                            Text(order.status.label())
-                            Text(money(order.totalCents))
+        LazyColumn(
+            contentPadding = PaddingValues(top = 12.dp, bottom = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            if (state.loading || state.error != null) {
+                item { LoadNotice(state.loading, state.error, refresh) }
+            }
+            if (state.orders?.isEmpty() == true) {
+                item { EmptyNotice(stringResource(R.string.orders_empty)) }
+            }
+            items(state.orders.orEmpty(), key = { it.id }) { order ->
+                Surface(
+                    onClick = { open(order.id) },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.large,
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                ) {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(storeName(stores, order.storeId), style = MaterialTheme.typography.titleMedium)
+                        Text(
+                            stringResource(R.string.order_number, order.id),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            StatusLabel(order.status.label(), order.status.tone())
+                            Text(money(order.totalCents), style = MaterialTheme.typography.titleMedium)
                         }
                     }
                 }
-                if (state.hasMore) item {
-                    TextButton(onClick = more, enabled = !state.loading) { Text("Load more") }
+            }
+            if (state.hasMore) {
+                item {
+                    TextButton(onClick = more, enabled = !state.loading) {
+                        Text(stringResource(R.string.orders_load_more))
+                    }
                 }
             }
         }
     }
 }
 
-internal fun OrderStatus.label() = when (this) {
-    OrderStatus.CREATED -> "Waiting for the store"
-    OrderStatus.PREPARING -> "Preparing"
-    OrderStatus.READY -> "Ready for pickup"
-    OrderStatus.COMPLETED -> "Collected"
-    OrderStatus.CANCELLED -> "Cancelled"
+@Composable
+internal fun OrderStatus.label() = stringResource(
+    when (this) {
+        OrderStatus.CREATED -> R.string.order_created
+        OrderStatus.PREPARING -> R.string.order_preparing
+        OrderStatus.READY -> R.string.order_ready
+        OrderStatus.COMPLETED -> R.string.order_collected
+        OrderStatus.CANCELLED -> R.string.order_cancelled
+    },
+)
+
+internal fun OrderStatus.tone(): StatusTone = when (this) {
+    OrderStatus.CREATED -> StatusTone.ATTENTION
+    OrderStatus.PREPARING, OrderStatus.READY -> StatusTone.ACTIVE
+    OrderStatus.COMPLETED, OrderStatus.CANCELLED -> StatusTone.NEUTRAL
 }

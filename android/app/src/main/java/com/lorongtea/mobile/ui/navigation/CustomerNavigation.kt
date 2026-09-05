@@ -114,11 +114,13 @@ internal fun NavGraphBuilder.customerNavigation(
                 back = { nav.popBackStack() },
             )
         }
-        composable("orders") {
+        composable("orders") { entry ->
             val account = session.account?.takeIf { it.role == Role.CUSTOMER } ?: return@composable
             val orders = viewModel { OrdersViewModel(app.orders, account) }
+            val stores by storeDirectory(app, nav, entry).state.collectAsStateWithLifecycle()
             OrdersScreen(
                 orders.state.collectAsStateWithLifecycle().value,
+                stores = stores.data.orEmpty(),
                 refresh = orders::refresh,
                 more = orders::more,
                 open = { orderId -> nav.navigate("order/$orderId") },
@@ -146,11 +148,13 @@ internal fun NavGraphBuilder.customerNavigation(
                 back = { nav.popBackStack() },
             )
         }
-        composable("pending") {
+        composable("pending") { entry ->
             val account = session.account?.takeIf { it.role == Role.CUSTOMER } ?: return@composable
             val pending = viewModel { PendingViewModel(app.carts, account.userId) }
+            val stores by storeDirectory(app, nav, entry).state.collectAsStateWithLifecycle()
             PendingScreen(
                 pending.state.collectAsStateWithLifecycle().value,
+                stores = stores.data.orEmpty(),
                 open = { storeId -> nav.navigate("cart/$storeId") },
                 back = { nav.popBackStack() },
             )
