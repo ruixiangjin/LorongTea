@@ -102,8 +102,10 @@ internal fun NavGraphBuilder.customerNavigation(
                     nav.navigate("order/$orderId") { popUpTo(entry.destination.id) { inclusive = true } }
                 }
             }
+            val stores by storeDirectory(app, nav, entry).state.collectAsStateWithLifecycle()
             CartScreen(
-                state,
+                state = state,
+                store = storeName(stores.data.orEmpty(), storeId),
                 change = cart::change,
                 review = cart::review,
                 dismissReview = cart::dismissReview,

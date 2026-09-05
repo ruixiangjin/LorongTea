@@ -1,6 +1,9 @@
 package com.lorongtea.mobile.ui.checkout
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -9,15 +12,21 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.lorongtea.mobile.R
 import com.lorongtea.mobile.data.CartLine
 import com.lorongtea.mobile.data.CartProblem
 import com.lorongtea.mobile.data.CartRepository
@@ -26,9 +35,14 @@ import com.lorongtea.mobile.data.CheckoutRepository
 import com.lorongtea.mobile.data.PendingCheckout
 import com.lorongtea.mobile.data.Session
 import com.lorongtea.mobile.data.totalCents
-import com.lorongtea.mobile.ui.common.display
+import com.lorongtea.mobile.ui.catalog.DrinkArtwork
+import com.lorongtea.mobile.ui.catalog.drinkName
 import com.lorongtea.mobile.ui.common.money
+import com.lorongtea.mobile.ui.components.BottomPanel
+import com.lorongtea.mobile.ui.components.EmptyNotice
 import com.lorongtea.mobile.ui.components.LoadNotice
+import com.lorongtea.mobile.ui.components.PrimaryAction
+import com.lorongtea.mobile.ui.components.ScreenHeading
 import com.lorongtea.mobile.ui.components.Page
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -109,6 +123,7 @@ class CartViewModel(
 @Composable
 fun CartScreen(
     state: CartState,
+    store: String,
     change: (String, Int) -> Unit,
     review: () -> Unit,
     dismissReview: () -> Unit,
@@ -116,53 +131,122 @@ fun CartScreen(
     recover: () -> Unit,
     back: () -> Unit,
 ) {
-    val editable = state.pending == null && !state.checkout.submitting
-    Page("Cart", back = back) {
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            LoadNotice(state.lines == null || state.checkout.submitting, state.checkout.notice)
-            val lines = state.lines ?: return@Column
-            val total = lines.totalCents()
-            if (lines.isEmpty()) Text("Your cart is empty.")
-            LazyColumn(Modifier.weight(1f, fill = false), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(lines, key = { it.productId }) { line ->
-                    Card(Modifier.fillMaxWidth()) {
-                        Column(Modifier.padding(16.dp)) {
-                            Text(line.name, style = MaterialTheme.typography.titleMedium)
-                            Text("${money(line.priceCents)} each")
-                            Row {
-                                TextButton(onClick = { change(line.productId, -1) }, enabled = editable) {
-                                    Text("Remove one")
-                                }
-                                TextButton(onClick = { change(line.productId, 1) }, enabled = editable) {
-                                    Text("Add one")
-                                }
-                                Text("Qty ${line.quantity}", Modifier.padding(12.dp))
-                            }
+    val lines = state.lines.orEmpty()
+    val pending = state.pending
+    val total = lines.totalCents()
+    val editable = pending == null && !state.checkout.submitting
+    Page(
+        title = store,
+        back = back,
+        bottomBar = {
+            if (pending != null || lines.isNotEmpty()) {
+                BottomPanel {
+                    if (lines.isNotEmpty() && total != null) {
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(stringResource(R.string.cart_total), style = MaterialTheme.typography.labelLarge)
+                            Text(money(total), style = MaterialTheme.typography.titleLarge)
                         }
                     }
+                    val label = when {
+                        state.checkout.submitting -> R.string.order_submitting
+                        pending?.priceChanged == true -> R.string.order_refresh_prices
+                        pending != null -> R.string.order_retry
+                        else -> R.string.review_order
+                    }
+                    PrimaryAction(
+                        label = stringResource(label),
+                        onClick = if (pending != null) recover else review,
+                        enabled = !state.checkout.submitting && (pending != null || total != null),
+                    )
                 }
             }
-            if (lines.isNotEmpty()) {
-                Text(total?.let { "Total ${money(it)}" } ?: "The cart total is too large.")
+        },
+    ) {
+        LazyColumn(
+            contentPadding = PaddingValues(top = 18.dp, bottom = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            item { ScreenHeading(stringResource(R.string.cart), stringResource(R.string.store_pickup)) }
+            if (state.lines == null || state.checkout.submitting || state.checkout.notice != null) {
+                item { LoadNotice(state.lines == null || state.checkout.submitting, state.checkout.notice) }
             }
-            val pending = state.pending
             if (pending != null) {
-                Text(if (pending.priceChanged) "Refresh prices to review your cart." else "Order awaiting confirmation.")
-                Button(onClick = recover, enabled = !state.checkout.submitting) {
-                    Text(if (pending.priceChanged) "Refresh prices" else "Retry order")
+                item {
+                    val description = if (pending.priceChanged) R.string.order_reprice_description
+                        else R.string.order_retry_description
+                    EmptyNotice(stringResource(description))
                 }
-            } else if (lines.isNotEmpty()) {
-                Button(onClick = review, enabled = editable && total != null) { Text("Review order") }
+            }
+            if (state.lines?.isEmpty() == true && pending == null) {
+                item { EmptyNotice(stringResource(R.string.cart_empty)) }
+            }
+            if (total == null) {
+                item { LoadNotice(false, stringResource(R.string.cart_total_too_large)) }
+            }
+            items(lines, key = { it.productId }) { line ->
+                CartItem(line, editable, change)
             }
         }
     }
-    state.checkout.review?.totalCents()?.let { total ->
+    state.checkout.review?.totalCents()?.let { reviewedTotal ->
         AlertDialog(
             onDismissRequest = dismissReview,
-            title = { Text("Confirm order") },
-            text = { Text("Pay ${money(total)} when you collect your order.") },
-            confirmButton = { Button(onClick = confirm) { Text("Place order") } },
-            dismissButton = { TextButton(onClick = dismissReview) { Text("Keep editing") } },
+            title = { Text(stringResource(R.string.confirm_order)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(stringResource(R.string.checkout_store, store), style = MaterialTheme.typography.titleMedium)
+                    Text(stringResource(R.string.checkout_pay_later, money(reviewedTotal)))
+                }
+            },
+            confirmButton = { Button(onClick = confirm) { Text(stringResource(R.string.place_order)) } },
+            dismissButton = { TextButton(onClick = dismissReview) { Text(stringResource(R.string.keep_editing)) } },
         )
+    }
+}
+
+@Composable
+private fun CartItem(line: CartLine, editable: Boolean, change: (String, Int) -> Unit) {
+    val name = drinkName(line.name)
+    val removeLabel = stringResource(R.string.cart_remove_one, name)
+    val addLabel = stringResource(R.string.cart_add_one, name)
+    val quantityLabel = stringResource(R.string.cart_quantity, line.quantity)
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+    ) {
+        Row(
+            Modifier.padding(14.dp),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            DrinkArtwork(line.name, Modifier.size(width = 64.dp, height = 76.dp))
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(name, style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(R.string.cart_unit_price, money(line.priceCents)))
+                Surface(color = MaterialTheme.colorScheme.surfaceVariant, shape = MaterialTheme.shapes.medium) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(
+                            onClick = { change(line.productId, -1) },
+                            enabled = editable,
+                            modifier = Modifier.semantics { contentDescription = removeLabel },
+                        ) { Text("−", style = MaterialTheme.typography.titleLarge) }
+                        Text(
+                            line.quantity.toString(),
+                            style = MaterialTheme.typography.labelLarge,
+                            modifier = Modifier.semantics { contentDescription = quantityLabel },
+                        )
+                        IconButton(
+                            onClick = { change(line.productId, 1) },
+                            enabled = editable,
+                            modifier = Modifier.semantics { contentDescription = addLabel },
+                        ) { Text("+", style = MaterialTheme.typography.titleLarge) }
+                    }
+                }
+            }
+        }
     }
 }

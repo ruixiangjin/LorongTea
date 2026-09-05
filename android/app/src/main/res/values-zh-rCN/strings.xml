@@ -38,4 +38,25 @@
     <string name="drink_oolong">炭焙乌龙鲜奶</string>
     <string name="drink_boba">黑糖珍珠奶茶</string>
     <string name="drink_pandan">斑斓椰奶茶</string>
+    <string name="cart">购物车</string>
+    <string name="cart_empty">购物车还是空的，返回菜单选杯茶吧。</string>
+    <string name="cart_unit_price">%1$s / 杯</string>
+    <string name="cart_total">合计</string>
+    <string name="cart_total_too_large">购物车金额超出上限。</string>
+    <string name="cart_remove_one">减少一杯%1$s</string>
+    <string name="cart_add_one">增加一杯%1$s</string>
+    <string name="cart_quantity">数量：%1$d</string>
+    <string name="review_order">核对订单</string>
+    <string name="confirm_order">确认订单</string>
+    <string name="checkout_store">取茶门店：%1$s</string>
+    <string name="checkout_pay_later">到店取茶时支付 %1$s。</string>
+    <string name="place_order">提交订单</string>
+    <string name="keep_editing">继续编辑</string>
+    <string name="order_submitting">正在提交…</string>
+    <string name="order_waiting_confirmation">等待确认</string>
+    <string name="order_prices_changed">价格已变动</string>
+    <string name="order_retry_description">重试可找回原订单的结果。</string>
+    <string name="order_reprice_description">刷新价格后，请重新核对订单金额。</string>
+    <string name="order_retry">重试订单</string>
+    <string name="order_refresh_prices">刷新价格</string>
 </resources>

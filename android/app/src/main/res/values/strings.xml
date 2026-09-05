@@ -38,4 +38,25 @@
     <string name="drink_oolong">Roasted Oolong Milk Tea</string>
     <string name="drink_boba">Brown Sugar Boba Milk Tea</string>
     <string name="drink_pandan">Pandan Coconut Milk Tea</string>
+    <string name="cart">Your cart</string>
+    <string name="cart_empty">Your cart is empty. Go back to the menu to add drinks.</string>
+    <string name="cart_unit_price">%1$s each</string>
+    <string name="cart_total">Total</string>
+    <string name="cart_total_too_large">The cart total is too large.</string>
+    <string name="cart_remove_one">Remove one %1$s</string>
+    <string name="cart_add_one">Add one %1$s</string>
+    <string name="cart_quantity">Quantity: %1$d</string>
+    <string name="review_order">Review order</string>
+    <string name="confirm_order">Confirm your order</string>
+    <string name="checkout_store">Pickup at %1$s</string>
+    <string name="checkout_pay_later">Pay %1$s at the store when you collect your order.</string>
+    <string name="place_order">Place order</string>
+    <string name="keep_editing">Keep editing</string>
+    <string name="order_submitting">Submitting…</string>
+    <string name="order_waiting_confirmation">Awaiting confirmation</string>
+    <string name="order_prices_changed">Prices changed</string>
+    <string name="order_retry_description">Retry to check the result of your original order.</string>
+    <string name="order_reprice_description">Refresh prices to review your updated total.</string>
+    <string name="order_retry">Retry order</string>
+    <string name="order_refresh_prices">Refresh prices</string>
 </resources>
