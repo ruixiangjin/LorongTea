@@ -141,8 +141,10 @@ internal fun NavGraphBuilder.customerNavigation(
                     }
                 }
             }
+            val stores by storeDirectory(app, nav, entry).state.collectAsStateWithLifecycle()
             OrderDetailScreen(
-                detail.state.collectAsStateWithLifecycle().value,
+                state = detail.state.collectAsStateWithLifecycle().value,
+                stores = stores.data.orEmpty(),
                 refresh = detail::refresh,
                 cancel = detail::cancel,
                 back = { nav.popBackStack() },

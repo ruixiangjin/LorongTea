@@ -41,6 +41,7 @@ fun Page(
     back: (() -> Unit)? = null,
     actions: @Composable RowScope.() -> Unit = {},
     bottomBar: @Composable () -> Unit = {},
+    snackbarHost: @Composable () -> Unit = {},
     content: @Composable () -> Unit,
 ) {
     Scaffold(
@@ -62,6 +63,7 @@ fun Page(
             }
         },
         bottomBar = bottomBar,
+        snackbarHost = snackbarHost,
     ) { insets ->
         Box(Modifier.fillMaxSize().padding(insets).padding(horizontal = 20.dp)) { content() }
     }

@@ -69,4 +69,22 @@
     <string name="order_cancelled">Cancelled</string>
     <string name="pending_empty">You have no checkouts awaiting confirmation.</string>
     <string name="pending_description">Reopen a checkout to recover the result or review updated prices.</string>
+    <string name="order_detail">Order details</string>
+    <string name="order_detail_created">The store is reviewing your order. Check back for an update.</string>
+    <string name="order_detail_preparing">The store is making your drinks. Check back to see when they are ready.</string>
+    <string name="order_detail_ready_unpaid">Pay at the counter to unlock your pickup code.</string>
+    <string name="order_detail_ready_paid">Show your pickup code at the counter to collect your drinks.</string>
+    <string name="order_detail_ready_paid_waiting">Payment confirmed. Refresh to check for your pickup code.</string>
+    <string name="order_detail_collected">The store marked this order as collected.</string>
+    <string name="payment_paid">Paid</string>
+    <string name="payment_unpaid">Unpaid</string>
+    <string name="payment_pay_at_store">Pay at the store</string>
+    <string name="pickup_code">Pickup code</string>
+    <string name="copy_pickup_code">Copy pickup code</string>
+    <string name="pickup_copied">Pickup code copied</string>
+    <string name="order_items">Items</string>
+    <string name="order_line">%1$d × %2$s</string>
+    <string name="cancel_order">Cancel order</string>
+    <string name="cancel_order_title">Cancel this order?</string>
+    <string name="keep_order">Keep order</string>
 </resources>

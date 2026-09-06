@@ -69,4 +69,22 @@
     <string name="order_cancelled">已取消</string>
     <string name="pending_empty">当前没有待确认订单。</string>
     <string name="pending_description">打开待确认订单，找回下单结果或核对更新后的价格。</string>
+    <string name="order_detail">订单详情</string>
+    <string name="order_detail_created">门店正在确认订单，请留意状态更新。</string>
+    <string name="order_detail_preparing">门店正在制作饮品，请留意取茶通知。</string>
+    <string name="order_detail_ready_unpaid">请到柜台付款，付款确认后即可查看取茶码。</string>
+    <string name="order_detail_ready_paid">请在柜台出示取茶码，领取饮品。</string>
+    <string name="order_detail_ready_paid_waiting">已确认付款，请刷新查看取茶码。</string>
+    <string name="order_detail_collected">门店已确认这笔订单完成取茶。</string>
+    <string name="payment_paid">已付款</string>
+    <string name="payment_unpaid">未付款</string>
+    <string name="payment_pay_at_store">到店付款</string>
+    <string name="pickup_code">取茶码</string>
+    <string name="copy_pickup_code">复制取茶码</string>
+    <string name="pickup_copied">取茶码已复制</string>
+    <string name="order_items">饮品明细</string>
+    <string name="order_line">%1$d 杯 · %2$s</string>
+    <string name="cancel_order">取消订单</string>
+    <string name="cancel_order_title">取消这笔订单？</string>
+    <string name="keep_order">保留订单</string>
 </resources>
