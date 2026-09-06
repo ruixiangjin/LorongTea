@@ -26,7 +26,6 @@
     <string name="stay_here">Stay here</string>
     <string name="my_orders">My orders</string>
     <string name="pending_orders">Pending checkouts</string>
-    <string name="menu">Menu</string>
     <string name="menu_heading">Choose your tea</string>
     <string name="menu_empty">This store has no drinks on the menu right now.</string>
     <string name="menu_unavailable">Unavailable at this store</string>

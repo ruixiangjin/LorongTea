@@ -16,6 +16,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.lorongtea.mobile.R
 import com.lorongtea.mobile.data.Store
+import com.lorongtea.mobile.ui.catalog.storeName
 import com.lorongtea.mobile.ui.common.RemoteState
 import com.lorongtea.mobile.ui.components.LoadNotice
 import com.lorongtea.mobile.ui.components.Page
@@ -41,7 +42,7 @@ internal fun StaffHomeScreen(state: RemoteState<Store>, refresh: () -> Unit, sig
                 ) {
                     Column(Modifier.padding(22.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text(stringResource(R.string.staff_assigned_store), style = MaterialTheme.typography.labelLarge)
-                        Text(store.name, style = MaterialTheme.typography.headlineLarge)
+                        Text(storeName(store), style = MaterialTheme.typography.headlineLarge)
                     }
                 }
             }

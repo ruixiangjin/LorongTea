@@ -87,6 +87,7 @@ fun LoginScreen(state: LoginState, expired: Boolean, signIn: (String, String) ->
                 label = { Text(stringResource(R.string.username)) },
                 singleLine = true,
                 enabled = !state.submitting,
+                shape = MaterialTheme.shapes.medium,
                 modifier = Modifier.fillMaxWidth(),
             )
             OutlinedTextField(
@@ -97,6 +98,7 @@ fun LoginScreen(state: LoginState, expired: Boolean, signIn: (String, String) ->
                 enabled = !state.submitting,
                 visualTransformation = PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                shape = MaterialTheme.shapes.medium,
                 modifier = Modifier.fillMaxWidth(),
             )
             PrimaryAction(

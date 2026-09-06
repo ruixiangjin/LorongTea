@@ -6,26 +6,26 @@ import android.os.Build
 import android.os.PersistableBundle
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -174,6 +174,7 @@ fun OrderDetailScreen(
         order.status == OrderStatus.READY && order.paymentStatus == PaymentStatus.PAID
     }
     val busy = state.loading || state.cancelling
+    val showProgress = state.cancelling || (order == null && state.loading)
     Page(
         title = order?.let { stringResource(R.string.order_number, it.id) } ?: stringResource(R.string.order_detail),
         back = back,
@@ -184,8 +185,8 @@ fun OrderDetailScreen(
             Modifier.verticalScroll(rememberScrollState()).padding(top = 12.dp, bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            if (busy || state.error != null) {
-                LoadNotice(busy, state.error, refresh)
+            if (showProgress || state.error != null) {
+                LoadNotice(showProgress, state.error, refresh)
             }
             if (order == null) return@Column
 
@@ -208,7 +209,7 @@ fun OrderDetailScreen(
             if (order.status == OrderStatus.CREATED) {
                 OutlinedButton(
                     onClick = { confirmCancel = true },
-                    enabled = !state.cancelling,
+                    enabled = !busy,
                     modifier = Modifier.fillMaxWidth(),
                 ) { Text(stringResource(R.string.cancel_order), color = MaterialTheme.colorScheme.error) }
             }
@@ -219,10 +220,13 @@ fun OrderDetailScreen(
             onDismissRequest = { confirmCancel = false },
             title = { Text(stringResource(R.string.cancel_order_title)) },
             confirmButton = {
-                TextButton(onClick = {
-                    confirmCancel = false
-                    cancel()
-                }) { Text(stringResource(R.string.cancel_order), color = MaterialTheme.colorScheme.error) }
+                TextButton(
+                    onClick = {
+                        confirmCancel = false
+                        cancel()
+                    },
+                    enabled = !busy,
+                ) { Text(stringResource(R.string.cancel_order), color = MaterialTheme.colorScheme.error) }
             },
             dismissButton = {
                 TextButton(onClick = { confirmCancel = false }) { Text(stringResource(R.string.keep_order)) }

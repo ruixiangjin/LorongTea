@@ -26,7 +26,6 @@
     <string name="stay_here">留在此店</string>
     <string name="my_orders">我的订单</string>
     <string name="pending_orders">待确认订单</string>
-    <string name="menu">菜单</string>
     <string name="menu_heading">今天喝什么？</string>
     <string name="menu_empty">这家门店暂时没有可点的饮品。</string>
     <string name="menu_unavailable">此店暂不可点</string>

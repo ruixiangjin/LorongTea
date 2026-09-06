@@ -2,19 +2,19 @@ package com.lorongtea.mobile.ui.checkout
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.Surface
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -41,9 +41,9 @@ import com.lorongtea.mobile.ui.common.money
 import com.lorongtea.mobile.ui.components.BottomPanel
 import com.lorongtea.mobile.ui.components.EmptyNotice
 import com.lorongtea.mobile.ui.components.LoadNotice
+import com.lorongtea.mobile.ui.components.Page
 import com.lorongtea.mobile.ui.components.PrimaryAction
 import com.lorongtea.mobile.ui.components.ScreenHeading
-import com.lorongtea.mobile.ui.components.Page
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine

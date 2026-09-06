@@ -3,11 +3,11 @@ package com.lorongtea.mobile.ui.navigation
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -23,9 +23,9 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
 import com.lorongtea.mobile.LorongTeaApplication
 import com.lorongtea.mobile.R
-import com.lorongtea.mobile.data.Store
 import com.lorongtea.mobile.data.Role
 import com.lorongtea.mobile.data.SessionState
+import com.lorongtea.mobile.data.Store
 import com.lorongtea.mobile.ui.catalog.MenuScreen
 import com.lorongtea.mobile.ui.catalog.MenuViewModel
 import com.lorongtea.mobile.ui.catalog.StoresScreen

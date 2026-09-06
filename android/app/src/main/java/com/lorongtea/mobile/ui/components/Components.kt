@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -65,7 +66,9 @@ fun Page(
         bottomBar = bottomBar,
         snackbarHost = snackbarHost,
     ) { insets ->
-        Box(Modifier.fillMaxSize().padding(insets).padding(horizontal = 20.dp)) { content() }
+        Box(
+            Modifier.fillMaxSize().padding(insets).consumeWindowInsets(insets).padding(horizontal = 20.dp),
+        ) { content() }
     }
 }
 
