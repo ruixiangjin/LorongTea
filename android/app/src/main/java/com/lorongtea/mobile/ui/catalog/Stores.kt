@@ -4,7 +4,6 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -15,7 +14,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -40,10 +38,10 @@ fun StoresScreen(
     refresh: () -> Unit,
     select: (Store) -> Unit,
     signOut: () -> Unit,
-    openOrders: () -> Unit,
-    openPending: () -> Unit,
+    back: (() -> Unit)? = null,
+    bottomBar: @Composable () -> Unit = {},
 ) {
-    Page(stringResource(R.string.brand_name), actions = {
+    Page(stringResource(R.string.brand_name), back = back, bottomBar = bottomBar, actions = {
         RefreshAction(refresh, enabled = !state.loading)
         TextButton(onClick = signOut) { Text(stringResource(R.string.sign_out)) }
     }) {
@@ -56,12 +54,6 @@ fun StoresScreen(
                     stringResource(R.string.choose_store),
                     stringResource(R.string.choose_store_description),
                 )
-            }
-            item {
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(onClick = openOrders) { Text(stringResource(R.string.my_orders)) }
-                    OutlinedButton(onClick = openPending) { Text(stringResource(R.string.pending_orders)) }
-                }
             }
             if (state.loading || state.error != null) {
                 item { LoadNotice(state.loading, state.error, refresh) }

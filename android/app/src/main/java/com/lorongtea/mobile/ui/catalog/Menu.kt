@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -94,18 +95,24 @@ fun MenuScreen(
     refresh: () -> Unit,
     add: (MenuItem) -> Unit,
     cart: () -> Unit,
-    back: () -> Unit,
+    changeStore: () -> Unit,
+    navigation: @Composable () -> Unit = {},
 ) {
     val inCart = state.quantities.values.sumOf { it.toLong() }
     Page(
         title = store,
-        back = back,
-        actions = { RefreshAction(refresh, enabled = !state.menu.loading) },
+        actions = {
+            RefreshAction(refresh, enabled = !state.menu.loading)
+            TextButton(onClick = changeStore) { Text(stringResource(R.string.change_store_short)) }
+        },
         bottomBar = {
-            BottomPanel {
-                val label = if (inCart > 0) stringResource(R.string.view_cart_count, inCart)
-                    else stringResource(R.string.view_cart)
-                PrimaryAction(label, cart)
+            Column {
+                BottomPanel {
+                    val label = if (inCart > 0) stringResource(R.string.view_cart_count, inCart)
+                        else stringResource(R.string.view_cart)
+                    PrimaryAction(label, cart)
+                }
+                navigation()
             }
         },
     ) {

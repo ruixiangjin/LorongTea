@@ -90,15 +90,19 @@ fun OrdersScreen(
     refresh: () -> Unit,
     more: () -> Unit,
     open: (String) -> Unit,
-    back: () -> Unit,
+    openPending: () -> Unit,
+    bottomBar: @Composable () -> Unit = {},
 ) {
-    Page(stringResource(R.string.my_orders), back = back, actions = {
+    Page(stringResource(R.string.my_orders), bottomBar = bottomBar, actions = {
         RefreshAction(refresh, enabled = !state.loading)
     }) {
         LazyColumn(
             contentPadding = PaddingValues(top = 12.dp, bottom = 20.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+            item {
+                TextButton(onClick = openPending) { Text(stringResource(R.string.pending_orders)) }
+            }
             if (state.loading || state.error != null) {
                 item { LoadNotice(state.loading, state.error, refresh) }
             }

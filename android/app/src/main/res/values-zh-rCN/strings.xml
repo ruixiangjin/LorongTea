@@ -86,4 +86,9 @@
     <string name="cancel_order">取消订单</string>
     <string name="cancel_order_title">取消这笔订单？</string>
     <string name="keep_order">保留订单</string>
+    <string name="tab_shop">点单</string>
+    <string name="tab_orders">订单</string>
+    <string name="change_store">切换取茶门店</string>
+    <string name="change_store_short">切换</string>
+    <string name="back_to_menu">返回菜单</string>
 </resources>

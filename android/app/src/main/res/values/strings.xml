@@ -86,4 +86,9 @@
     <string name="cancel_order">Cancel order</string>
     <string name="cancel_order_title">Cancel this order?</string>
     <string name="keep_order">Keep order</string>
+    <string name="tab_shop">Order tea</string>
+    <string name="tab_orders">Orders</string>
+    <string name="change_store">Change pickup store</string>
+    <string name="change_store_short">Change</string>
+    <string name="back_to_menu">Back to menu</string>
 </resources>
