@@ -3,7 +3,9 @@ package com.lorongtea.mobile.ui.auth
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
@@ -19,6 +21,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
@@ -74,12 +77,17 @@ fun LoginScreen(state: LoginState, expired: Boolean, signIn: (String, String) ->
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             Image(
-                painter = painterResource(R.drawable.tea_brand),
+                painter = painterResource(R.drawable.tea_oolong_hero),
                 contentDescription = null,
-                modifier = Modifier.fillMaxWidth().aspectRatio(1.85f).clip(MaterialTheme.shapes.extraLarge),
+                modifier = Modifier.fillMaxWidth().aspectRatio(1.75f).clip(MaterialTheme.shapes.extraLarge),
                 contentScale = ContentScale.Crop,
             )
-            ScreenHeading(stringResource(R.string.brand_name), stringResource(R.string.brand_tagline))
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Image(painterResource(R.drawable.brand_mark), contentDescription = null, Modifier.size(52.dp))
+                Column(Modifier.weight(1f)) {
+                    ScreenHeading(stringResource(R.string.brand_name), stringResource(R.string.brand_tagline))
+                }
+            }
             LoadNotice(state.submitting, state.error ?: stringResource(R.string.session_expired).takeIf { expired })
             OutlinedTextField(
                 value = username,

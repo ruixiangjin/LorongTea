@@ -107,10 +107,11 @@ fun PrimaryAction(label: String, onClick: () -> Unit, enabled: Boolean = true) {
 }
 
 @Composable
-fun BottomPanel(content: @Composable () -> Unit) {
+fun BottomPanel(padNavigationBars: Boolean = true, content: @Composable () -> Unit) {
     Surface(color = MaterialTheme.colorScheme.surface, shadowElevation = 6.dp) {
+        val insets = if (padNavigationBars) Modifier.navigationBarsPadding() else Modifier
         Column(
-            Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 20.dp, vertical = 12.dp),
+            Modifier.fillMaxWidth().then(insets).padding(horizontal = 20.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) { content() }
     }

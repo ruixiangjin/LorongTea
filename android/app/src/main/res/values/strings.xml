@@ -91,4 +91,9 @@
     <string name="change_store">Change pickup store</string>
     <string name="change_store_short">Change</string>
     <string name="back_to_menu">Back to menu</string>
+    <string name="menu_featured">House pick</string>
+    <string name="menu_other_drinks">More from the menu</string>
+    <string name="menu_featured_description">Roasted oolong with fresh milk</string>
+    <string name="menu_cart_total">%1$d in cart · %2$s</string>
+    <string name="menu_cart_recover">Find your order</string>
 </resources>

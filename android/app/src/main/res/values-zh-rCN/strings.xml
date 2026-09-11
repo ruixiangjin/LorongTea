@@ -91,4 +91,9 @@
     <string name="change_store">切换取茶门店</string>
     <string name="change_store_short">切换</string>
     <string name="back_to_menu">返回菜单</string>
+    <string name="menu_featured">茶铺推荐</string>
+    <string name="menu_other_drinks">更多茶饮</string>
+    <string name="menu_featured_description">炭焙乌龙，搭配鲜奶</string>
+    <string name="menu_cart_total">%1$d 杯 · %2$s</string>
+    <string name="menu_cart_recover">找回订单</string>
 </resources>
