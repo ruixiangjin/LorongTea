@@ -14,6 +14,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SnackbarHost
@@ -170,9 +171,7 @@ fun OrderDetailScreen(
     val copyLabel = stringResource(R.string.pickup_code)
     val copyConfirmation = stringResource(R.string.pickup_copied)
     val order = state.order
-    val pickup = order?.pickupToken?.takeIf {
-        order.status == OrderStatus.READY && order.paymentStatus == PaymentStatus.PAID
-    }
+    val pickup = order?.availablePickupCode()
     val busy = state.loading || state.cancelling
     val showProgress = state.cancelling || (order == null && state.loading)
     Page(
@@ -185,11 +184,10 @@ fun OrderDetailScreen(
             Modifier.verticalScroll(rememberScrollState()).padding(top = 12.dp, bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            if (showProgress || state.error != null) {
+            if (order == null) {
                 LoadNotice(showProgress, state.error, refresh)
+                return@Column
             }
-            if (order == null) return@Column
-
             OrderStatusCard(order, storeName(stores, order.storeId), hasCode = pickup != null)
             if (pickup != null) {
                 PickupCard(pickup) {
@@ -204,6 +202,9 @@ fun OrderDetailScreen(
                         scope.launch { snackbar.showSnackbar(copyConfirmation) }
                     }
                 }
+            }
+            if (showProgress || state.error != null) {
+                LoadNotice(showProgress, state.error, refresh)
             }
             OrderReceipt(order)
             if (order.status == OrderStatus.CREATED) {
@@ -243,6 +244,17 @@ private fun OrderStatusCard(order: Order, store: String, hasCode: Boolean) {
         order.status == OrderStatus.CANCELLED -> R.string.payment_unpaid
         else -> R.string.payment_pay_at_store
     }
+    val action = when (order.status) {
+        OrderStatus.CREATED -> R.string.order_action_created
+        OrderStatus.PREPARING -> R.string.order_action_preparing
+        OrderStatus.READY -> when {
+            hasCode -> R.string.order_action_pickup
+            paid -> R.string.order_action_refresh
+            else -> R.string.order_action_pay
+        }
+        OrderStatus.COMPLETED -> R.string.order_collected
+        OrderStatus.CANCELLED -> R.string.order_cancelled
+    }
     val nextStep = when (order.status) {
         OrderStatus.CREATED -> R.string.order_detail_created
         OrderStatus.PREPARING -> R.string.order_detail_preparing
@@ -262,20 +274,41 @@ private fun OrderStatusCard(order: Order, store: String, hasCode: Boolean) {
     ) {
         Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
             Text(store, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
-            Text(order.status.label(), style = MaterialTheme.typography.headlineSmall)
-            StatusLabel(
-                stringResource(payment),
-                when {
-                    paid -> StatusTone.ACTIVE
-                    order.status == OrderStatus.CANCELLED -> StatusTone.NEUTRAL
-                    else -> StatusTone.ATTENTION
-                },
-            )
+            Text(stringResource(action), style = MaterialTheme.typography.headlineSmall)
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                if (order.status != OrderStatus.CANCELLED && order.status != OrderStatus.COMPLETED) {
+                    OrderStatusLabel(order.status)
+                }
+                StatusLabel(
+                    stringResource(payment),
+                    when {
+                        paid -> StatusTone.ACTIVE
+                        order.status == OrderStatus.CANCELLED -> StatusTone.NEUTRAL
+                        else -> StatusTone.ATTENTION
+                    },
+                )
+            }
+            order.status.pickupStep()?.let { step ->
+                LinearProgressIndicator(progress = { step / 4f }, modifier = Modifier.fillMaxWidth())
+                Text(stringResource(R.string.order_progress, step, 4), style = MaterialTheme.typography.bodyMedium)
+            }
             if (nextStep != null) {
                 Text(stringResource(nextStep), color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }
+}
+
+internal fun Order.availablePickupCode(): String? = pickupToken?.takeIf {
+    it.isNotBlank() && status == OrderStatus.READY && paymentStatus == PaymentStatus.PAID
+}
+
+internal fun OrderStatus.pickupStep(): Int? = when (this) {
+    OrderStatus.CREATED -> 1
+    OrderStatus.PREPARING -> 2
+    OrderStatus.READY -> 3
+    OrderStatus.COMPLETED -> 4
+    OrderStatus.CANCELLED -> null
 }
 
 @Composable
@@ -295,7 +328,7 @@ private fun PickupCard(code: String, copy: () -> Unit) {
 }
 
 @Composable
-private fun OrderReceipt(order: Order) {
+internal fun OrderReceipt(order: Order) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.large,

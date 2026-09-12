@@ -21,6 +21,7 @@ import com.lorongtea.mobile.ui.catalog.MenuScreen
 import com.lorongtea.mobile.ui.catalog.MenuViewModel
 import com.lorongtea.mobile.ui.catalog.StoresScreen
 import com.lorongtea.mobile.ui.catalog.storeName
+import com.lorongtea.mobile.ui.checkout.PendingViewModel
 import com.lorongtea.mobile.ui.common.RemoteViewModel
 import com.lorongtea.mobile.ui.orders.OrdersScreen
 import com.lorongtea.mobile.ui.orders.OrdersViewModel
@@ -32,7 +33,6 @@ internal fun CustomerHome(
     directory: RemoteViewModel<List<Store>>,
     openCart: (String) -> Unit,
     openOrder: (String) -> Unit,
-    openPending: () -> Unit,
 ) {
     val stores by directory.state.collectAsStateWithLifecycle()
     var tab by rememberSaveable { mutableStateOf(CustomerTab.SHOP) }
@@ -56,13 +56,15 @@ internal fun CustomerHome(
     when {
         tab == CustomerTab.ORDERS -> screens.SaveableStateProvider("orders") {
             val orders = viewModel { OrdersViewModel(app.orders, account) }
+            val pending = viewModel { PendingViewModel(app.carts, account.userId) }
             OrdersScreen(
                 state = orders.state.collectAsStateWithLifecycle().value,
                 stores = stores.data.orEmpty(),
                 refresh = orders::refresh,
                 more = orders::more,
                 open = openOrder,
-                openPending = openPending,
+                pending = pending.state.collectAsStateWithLifecycle().value.orEmpty(),
+                openPending = openCart,
                 bottomBar = navigation,
             )
         }

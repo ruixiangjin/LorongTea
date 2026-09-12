@@ -16,6 +16,8 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -24,9 +26,11 @@ import com.lorongtea.mobile.data.ApiFailure
 import com.lorongtea.mobile.data.Order
 import com.lorongtea.mobile.data.OrderRepository
 import com.lorongtea.mobile.data.OrderStatus
+import com.lorongtea.mobile.data.PendingCheckout
 import com.lorongtea.mobile.data.Session
 import com.lorongtea.mobile.data.Store
 import com.lorongtea.mobile.ui.catalog.storeName
+import com.lorongtea.mobile.ui.checkout.PendingCheckoutCard
 import com.lorongtea.mobile.ui.common.display
 import com.lorongtea.mobile.ui.common.money
 import com.lorongtea.mobile.ui.components.EmptyNotice
@@ -90,7 +94,8 @@ fun OrdersScreen(
     refresh: () -> Unit,
     more: () -> Unit,
     open: (String) -> Unit,
-    openPending: () -> Unit,
+    pending: List<PendingCheckout>,
+    openPending: (String) -> Unit,
     bottomBar: @Composable () -> Unit = {},
 ) {
     Page(stringResource(R.string.my_orders), bottomBar = bottomBar, actions = {
@@ -100,16 +105,25 @@ fun OrdersScreen(
             contentPadding = PaddingValues(top = 12.dp, bottom = 20.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            item {
-                TextButton(onClick = openPending) { Text(stringResource(R.string.pending_orders)) }
+            if (pending.isNotEmpty()) {
+                item(key = "attention") { OrderSectionTitle(stringResource(R.string.orders_needs_attention)) }
+                items(pending, key = { "pending/${it.key}" }) { checkout ->
+                    PendingCheckoutCard(checkout, storeName(stores, checkout.storeId)) { openPending(checkout.storeId) }
+                }
+            }
+            if (!state.orders.isNullOrEmpty()) {
+                item(key = "history") { OrderSectionTitle(stringResource(R.string.orders_history)) }
             }
             if (state.loading || state.error != null) {
                 item { LoadNotice(state.loading, state.error, refresh) }
             }
             if (state.orders?.isEmpty() == true) {
-                item { EmptyNotice(stringResource(R.string.orders_empty)) }
+                item {
+                    val message = if (pending.isEmpty()) R.string.orders_empty else R.string.orders_no_confirmed
+                    EmptyNotice(stringResource(message))
+                }
             }
-            items(state.orders.orEmpty(), key = { it.id }) { order ->
+            items(state.orders.orEmpty(), key = { "order/${it.id}" }) { order ->
                 Surface(
                     onClick = { open(order.id) },
                     modifier = Modifier.fillMaxWidth(),
@@ -126,7 +140,7 @@ fun OrdersScreen(
                             horizontalArrangement = Arrangement.spacedBy(12.dp),
                             verticalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
-                            StatusLabel(order.status.label(), order.status.tone())
+                            OrderStatusLabel(order.status)
                             Text(money(order.totalCents), style = MaterialTheme.typography.titleMedium)
                         }
                     }
@@ -141,6 +155,20 @@ fun OrdersScreen(
             }
         }
     }
+}
+
+@Composable
+private fun OrderSectionTitle(label: String) {
+    Text(
+        label,
+        modifier = Modifier.padding(top = 6.dp).semantics { heading() },
+        style = MaterialTheme.typography.headlineSmall,
+    )
+}
+
+@Composable
+internal fun OrderStatusLabel(status: OrderStatus) {
+    StatusLabel(status.label(), status.tone())
 }
 
 @Composable

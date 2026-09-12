@@ -103,4 +103,13 @@
     <string name="checkout_item_unavailable">已不可点</string>
     <string name="checkout_find_order">找回订单</string>
     <string name="checkout_confirm_description">请核对饮品和取茶门店。</string>
+    <string name="orders_needs_attention">需要你处理</string>
+    <string name="orders_history">订单记录</string>
+    <string name="orders_no_confirmed">暂无已确认的订单。</string>
+    <string name="order_progress">进度 %1$d / %2$d</string>
+    <string name="order_action_created">等待门店接单</string>
+    <string name="order_action_preparing">饮品正在制作</string>
+    <string name="order_action_pay">到柜台付款</string>
+    <string name="order_action_pickup">出示取茶码</string>
+    <string name="order_action_refresh">查看取茶码</string>
 </resources>

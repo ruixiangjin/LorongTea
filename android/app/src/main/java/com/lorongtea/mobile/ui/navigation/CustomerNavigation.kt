@@ -21,8 +21,6 @@ import com.lorongtea.mobile.data.Store
 import com.lorongtea.mobile.ui.catalog.storeName
 import com.lorongtea.mobile.ui.checkout.CartScreen
 import com.lorongtea.mobile.ui.checkout.CartViewModel
-import com.lorongtea.mobile.ui.checkout.PendingScreen
-import com.lorongtea.mobile.ui.checkout.PendingViewModel
 import com.lorongtea.mobile.ui.common.RemoteViewModel
 import com.lorongtea.mobile.ui.orders.OrderDetailScreen
 import com.lorongtea.mobile.ui.orders.OrderDetailViewModel
@@ -43,7 +41,6 @@ internal fun NavGraphBuilder.customerNavigation(
                 directory = storeDirectory(app, nav, entry),
                 openCart = { nav.navigate("cart/$it") { launchSingleTop = true } },
                 openOrder = { nav.navigate("order/$it") { launchSingleTop = true } },
-                openPending = { nav.navigate("pending") { launchSingleTop = true } },
             )
         }
         composable("cart/{storeId}") { entry ->
@@ -88,17 +85,6 @@ internal fun NavGraphBuilder.customerNavigation(
                 stores = stores.data.orEmpty(),
                 refresh = detail::refresh,
                 cancel = detail::cancel,
-                back = { nav.popBackStack() },
-            )
-        }
-        composable("pending") { entry ->
-            val account = session.account?.takeIf { it.role == Role.CUSTOMER } ?: return@composable
-            val pending = viewModel { PendingViewModel(app.carts, account.userId) }
-            val stores by storeDirectory(app, nav, entry).state.collectAsStateWithLifecycle()
-            PendingScreen(
-                pending.state.collectAsStateWithLifecycle().value,
-                stores = stores.data.orEmpty(),
-                open = { storeId -> nav.navigate("cart/$storeId") },
                 back = { nav.popBackStack() },
             )
         }

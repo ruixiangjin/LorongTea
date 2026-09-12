@@ -103,4 +103,13 @@
     <string name="checkout_item_unavailable">No longer available</string>
     <string name="checkout_find_order">Find your order</string>
     <string name="checkout_confirm_description">Review your drinks and pickup store.</string>
+    <string name="orders_needs_attention">Needs your attention</string>
+    <string name="orders_history">Order history</string>
+    <string name="orders_no_confirmed">No confirmed orders yet.</string>
+    <string name="order_progress">Step %1$d of %2$d</string>
+    <string name="order_action_created">Wait for the store</string>
+    <string name="order_action_preparing">We’re making your drinks</string>
+    <string name="order_action_pay">Pay at the counter</string>
+    <string name="order_action_pickup">Show your pickup code</string>
+    <string name="order_action_refresh">Check for your pickup code</string>
 </resources>
