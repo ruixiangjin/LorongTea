@@ -1,0 +1,17 @@
+<resources>
+    <string name="lab_title">南巷茶铺 · 界面演练</string>
+    <string name="lab_description">使用本地示例体验。这里的操作仅用于演练。</string>
+    <string name="lab_storefront">门店与购物车</string>
+    <string name="lab_repriced">改价后的购物车</string>
+    <string name="lab_pending">待确认购物车</string>
+    <string name="lab_order">订单与取茶进度</string>
+    <string name="lab_campaign">秒杀与活动回执</string>
+    <string name="lab_time_advance">快进 20 秒</string>
+    <string name="lab_campaign_store_status">比较两店开售状态</string>
+    <string name="lab_ready_unpaid">备好 · 待付款</string>
+    <string name="lab_ready_paid">备好 · 已付款</string>
+    <string name="lab_campaign_rate_limit">请求限流</string>
+    <string name="lab_campaign_unavailable">活动服务异常</string>
+    <string name="lab_campaign_released">未成单 · 资格已释放</string>
+    <string name="lab_reset">重置场景</string>
+</resources>

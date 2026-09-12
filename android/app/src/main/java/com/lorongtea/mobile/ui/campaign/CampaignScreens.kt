@@ -14,6 +14,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -23,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.os.ConfigurationCompat
@@ -81,11 +83,12 @@ internal fun CampaignDetailScreen(
     clock: () -> Long = System::currentTimeMillis,
     controls: @Composable () -> Unit = {},
 ) {
-    val action = campaignAction(offer, receipt, clockNow(offer, clock))
+    val time = campaignTime(clock)
     Page(
         title = stringResource(R.string.campaign_title),
         back = back,
         bottomBar = {
+            val action = campaignAction(offer, receipt, time.value)
             val label = when (action) {
                 CampaignAction.None -> null
                 CampaignAction.Claim -> R.string.campaign_claim
@@ -112,14 +115,14 @@ internal fun CampaignDetailScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             controls()
-            CampaignOfferDetails(offer, store, clock)
-            CampaignReceiptNotice(receipt, offer, clock)
+            CampaignOfferDetails(offer, store, time)
+            CampaignReceiptNotice(receipt, time)
         }
     }
 }
 
 @Composable
-private fun CampaignOfferDetails(offer: CampaignOffer, store: String, clock: () -> Long) {
+private fun CampaignOfferDetails(offer: CampaignOffer, store: String, time: State<Long>) {
     val locale = ConfigurationCompat.getLocales(LocalConfiguration.current)[0] ?: Locale.getDefault()
     val dateFormat = remember(locale) {
         DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT, locale).apply {
@@ -147,32 +150,31 @@ private fun CampaignOfferDetails(offer: CampaignOffer, store: String, clock: () 
                 Text(store, style = MaterialTheme.typography.labelLarge)
                 Text(drinkName(offer.drinkName), style = MaterialTheme.typography.headlineSmall)
                 Text(stringResource(R.string.campaign_offer_price, money(offer.priceCents)))
-                Text(stringResource(R.string.campaign_limit, offer.limitPerCustomer))
+                Text(pluralStringResource(R.plurals.campaign_limit, offer.limitPerCustomer, offer.limitPerCustomer))
                 Text(stringResource(R.string.campaign_starts, starts))
                 Text(stringResource(R.string.campaign_ends, ends))
                 StatusLabel(stringResource(offer.availability.label()), StatusTone.ACTIVE)
-                CampaignCountdown(offer, clock)
+                CampaignCountdown(offer, time)
             }
         }
     }
 }
 
 @Composable
-private fun CampaignCountdown(offer: CampaignOffer, clock: () -> Long) {
+private fun CampaignCountdown(offer: CampaignOffer, time: State<Long>) {
     val (label, deadline) = when (offer.availability) {
         CampaignAvailability.UPCOMING -> R.string.campaign_opens_in to offer.startsAtMillis
         CampaignAvailability.OPEN -> R.string.campaign_ends_in to offer.endsAtMillis
         else -> return
     }
-    val now = clockNow(offer, clock)
     Text(
-        stringResource(label, formatCountdown(remainingSeconds(deadline, now))),
+        stringResource(label, formatCountdown(remainingSeconds(deadline, time.value))),
         style = MaterialTheme.typography.titleMedium,
     )
 }
 
 @Composable
-private fun CampaignReceiptNotice(receipt: CampaignReceipt, offer: CampaignOffer, clock: () -> Long) {
+private fun CampaignReceiptNotice(receipt: CampaignReceipt, time: State<Long>) {
     val label = when (receipt) {
         CampaignReceipt.Idle, CampaignReceipt.Submitting -> return
         is CampaignReceipt.Accepted -> R.string.campaign_accepted
@@ -181,7 +183,7 @@ private fun CampaignReceiptNotice(receipt: CampaignReceipt, offer: CampaignOffer
         CampaignReceipt.ServiceUnavailable -> R.string.campaign_unavailable
         CampaignReceipt.Released -> R.string.campaign_released
         is CampaignReceipt.RateLimited -> {
-            val remaining = remainingSeconds(receipt.retryAtMillis, clockNow(offer, clock))
+            val remaining = remainingSeconds(receipt.retryAtMillis, time.value)
             val notice = if (remaining == 0L) stringResource(R.string.campaign_retry_ready)
                 else stringResource(R.string.campaign_retry_after, formatCountdown(remaining))
             EmptyNotice(notice)
@@ -203,18 +205,17 @@ private fun CampaignReceiptNotice(receipt: CampaignReceipt, offer: CampaignOffer
 }
 
 @Composable
-private fun clockNow(offer: CampaignOffer, clock: () -> Long): Long {
+private fun campaignTime(clock: () -> Long): State<Long> {
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val latestClock by rememberUpdatedState(clock)
-    val time by produceState(clock(), lifecycle, offer) {
+    return produceState(clock(), lifecycle) {
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             while (true) {
                 value = latestClock()
-                delay(250)
+                delay(500)
             }
         }
     }
-    return time
 }
 
 private fun formatCountdown(seconds: Long): String =

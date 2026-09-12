@@ -71,21 +71,9 @@ class CartRepository(private val database: LorongDatabase) {
                 return@withTransaction null
             }
             val original = dao.snapshot(pending.accountId, pending.storeId)
-            val available = menu.filter { it.listed }.associateBy { it.productId }
-            val updated = original.map { line ->
-                val item = available[line.productId]
-                if (item == null) line else line.copy(name = item.name, priceCents = item.priceCents)
-            }
-            original.zip(updated).forEach { (old, new) ->
-                if (old != new) dao.save(new)
-            }
-            CartPriceUpdate(
-                previousTotal = original.totalCents(),
-                updatedTotal = updated.totalCents(),
-                unavailableProducts = original.mapNotNull { line ->
-                    line.productId.takeUnless(available::containsKey)
-                }.toSet(),
-            )
+            val plan = planCartReprice(original, menu)
+            plan.changedLines.forEach { dao.save(it) }
+            plan.comparison
         }
 
     private suspend fun requireEditable(accountId: String, storeId: String) {
@@ -94,6 +82,25 @@ class CartRepository(private val database: LorongDatabase) {
         }
     }
 
+}
+
+internal data class CartRepricePlan(val changedLines: List<CartLine>, val comparison: CartPriceUpdate)
+
+internal fun planCartReprice(original: List<CartLine>, menu: List<MenuItem>): CartRepricePlan {
+    val available = menu.filter { it.listed }.associateBy { it.productId }
+    val unavailable = original.mapNotNull { it.productId.takeUnless(available::containsKey) }.toSet()
+    val updated = original.map { line ->
+        val item = available[line.productId]
+        if (item == null) line else line.copy(name = item.name, priceCents = item.priceCents)
+    }
+    return CartRepricePlan(
+        changedLines = updated.filterIndexed { index, line -> line != original[index] },
+        comparison = CartPriceUpdate(
+            previousTotal = original.totalCents(),
+            updatedTotal = updated.totalCents().takeIf { unavailable.isEmpty() },
+            unavailableProducts = unavailable,
+        ),
+    )
 }
 
 internal fun List<CartLine>.totalCents(): Long? {

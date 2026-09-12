@@ -11,6 +11,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.lorongtea.mobile.LorongTeaApplication
@@ -56,6 +58,7 @@ internal fun CustomerHome(
     when {
         tab == CustomerTab.ORDERS -> screens.SaveableStateProvider("orders") {
             val orders = viewModel { OrdersViewModel(app.orders, account) }
+            LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { orders.refresh() }
             val pending = viewModel { PendingViewModel(app.carts, account.userId) }
             OrdersScreen(
                 state = orders.state.collectAsStateWithLifecycle().value,
@@ -89,6 +92,7 @@ internal fun CustomerHome(
             }
             MenuScreen(
                 state = menu.state.collectAsStateWithLifecycle().value,
+                storeId = storeId,
                 store = storeName(stores.data.orEmpty(), storeId),
                 refresh = menu::refresh,
                 add = menu::add,

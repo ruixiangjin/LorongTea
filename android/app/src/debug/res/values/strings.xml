@@ -1,0 +1,17 @@
+<resources>
+    <string name="lab_title">Lorong Tea UI Lab</string>
+    <string name="lab_description">Explore local sample data. Actions here are simulations.</string>
+    <string name="lab_storefront">Storefront and cart</string>
+    <string name="lab_repriced">Cart after a price change</string>
+    <string name="lab_pending">Cart awaiting confirmation</string>
+    <string name="lab_order">Order and pickup progress</string>
+    <string name="lab_campaign">Campaign and request receipt</string>
+    <string name="lab_time_advance">Advance 20 seconds</string>
+    <string name="lab_campaign_store_status">Compare store availability</string>
+    <string name="lab_ready_unpaid">Ready · Unpaid</string>
+    <string name="lab_ready_paid">Ready · Paid</string>
+    <string name="lab_campaign_rate_limit">Rate limited</string>
+    <string name="lab_campaign_unavailable">Temporary service error</string>
+    <string name="lab_campaign_released">Request released</string>
+    <string name="lab_reset">Reset scenario</string>
+</resources>

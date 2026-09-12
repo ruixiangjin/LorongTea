@@ -156,7 +156,7 @@ fun CartScreen(
         bottomBar = {
             if (pending != null || lines.isNotEmpty()) {
                 BottomPanel {
-                    if (lines.isNotEmpty() && total != null) {
+                    if (lines.isNotEmpty() && total != null && !hasUnavailable) {
                         Row(
                             Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,

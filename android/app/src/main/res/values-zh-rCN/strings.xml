@@ -25,14 +25,11 @@
     <string name="switch_store">切换门店</string>
     <string name="stay_here">留在此店</string>
     <string name="my_orders">我的订单</string>
-    <string name="pending_orders">待确认订单</string>
-    <string name="menu_heading">今天喝什么？</string>
     <string name="menu_empty">这家门店暂时没有可点的饮品。</string>
     <string name="menu_unavailable">此店暂不可点</string>
     <string name="menu_add">加购</string>
     <string name="menu_add_drink">将%1$s加入购物车</string>
     <string name="menu_in_cart">已加购 · %1$d</string>
-    <string name="view_cart">查看购物车</string>
     <string name="view_cart_count">查看购物车 · %1$d</string>
     <string name="drink_oolong">炭焙乌龙鲜奶</string>
     <string name="drink_boba">黑糖珍珠奶茶</string>
@@ -50,13 +47,11 @@
     <string name="checkout_store">取茶门店：%1$s</string>
     <string name="checkout_pay_later">到店取茶时支付 %1$s。</string>
     <string name="place_order">提交订单</string>
-    <string name="keep_editing">继续编辑</string>
     <string name="order_submitting">正在提交…</string>
     <string name="order_waiting_confirmation">等待确认</string>
     <string name="order_prices_changed">价格已变动</string>
     <string name="order_retry_description">重试可找回原订单的结果。</string>
     <string name="order_reprice_description">刷新价格后，请重新核对订单金额。</string>
-    <string name="order_retry">重试订单</string>
     <string name="order_refresh_prices">刷新价格</string>
     <string name="orders_empty">你还没有订单。</string>
     <string name="orders_load_more">加载更多</string>
@@ -66,8 +61,6 @@
     <string name="order_ready">饮品已备好</string>
     <string name="order_collected">已取茶</string>
     <string name="order_cancelled">已取消</string>
-    <string name="pending_empty">当前没有待确认订单。</string>
-    <string name="pending_description">打开待确认订单，找回下单结果或核对更新后的价格。</string>
     <string name="order_detail">订单详情</string>
     <string name="order_detail_created">门店正在确认订单，请留意状态更新。</string>
     <string name="order_detail_preparing">门店正在制作饮品，请留意取茶通知。</string>
@@ -88,9 +81,7 @@
     <string name="keep_order">保留订单</string>
     <string name="tab_shop">点单</string>
     <string name="tab_orders">订单</string>
-    <string name="change_store">切换取茶门店</string>
     <string name="change_store_short">切换</string>
-    <string name="back_to_menu">返回菜单</string>
     <string name="menu_featured">茶铺推荐</string>
     <string name="menu_other_drinks">更多茶饮</string>
     <string name="menu_featured_description">炭焙乌龙，搭配鲜奶</string>
@@ -114,7 +105,6 @@
     <string name="order_action_refresh">查看取茶码</string>
     <string name="campaign_title">限时抢购</string>
     <string name="campaign_offer_price">活动价 · %1$s</string>
-    <string name="campaign_limit">此门店每位顾客限购 %1$d 杯</string>
     <string name="campaign_starts">马来西亚时间 %1$s 开售</string>
     <string name="campaign_ends">马来西亚时间 %1$s 结束</string>
     <string name="campaign_upcoming">即将开售</string>
@@ -137,4 +127,7 @@
     <string name="campaign_retry_ready">现在可以重试。</string>
     <string name="campaign_unavailable">活动服务暂不可用，请稍后重试。</string>
     <string name="campaign_released">这次请求未成单。活动开放期间可以重新抢购。</string>
+    <plurals name="campaign_limit">
+        <item quantity="other">此门店每位顾客限购 %1$d 杯</item>
+    </plurals>
 </resources>

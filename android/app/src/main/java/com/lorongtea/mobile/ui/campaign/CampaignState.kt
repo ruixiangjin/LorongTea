@@ -18,6 +18,8 @@ internal data class CampaignOffer(
     }
 }
 
+internal fun CampaignOffer.forStore(activeStoreId: String): CampaignOffer? = takeIf { storeId == activeStoreId }
+
 internal sealed interface CampaignReceipt {
     data object Idle : CampaignReceipt
     data object Submitting : CampaignReceipt

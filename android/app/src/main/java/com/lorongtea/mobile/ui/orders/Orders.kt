@@ -56,8 +56,6 @@ class OrdersViewModel(private val repository: OrderRepository, private val accou
     val state = mutable.asStateFlow()
     private var nextOffset = 0
 
-    init { refresh() }
-
     fun refresh() = load(reset = true)
     fun more() {
         if (mutable.value.hasMore) load(reset = false)
@@ -114,8 +112,9 @@ fun OrdersScreen(
             if (!state.orders.isNullOrEmpty()) {
                 item(key = "history") { OrderSectionTitle(stringResource(R.string.orders_history)) }
             }
-            if (state.loading || state.error != null) {
-                item { LoadNotice(state.loading, state.error, refresh) }
+            val initialLoading = state.loading && state.orders == null
+            if (initialLoading || state.error != null) {
+                item { LoadNotice(initialLoading, state.error, refresh) }
             }
             if (state.orders?.isEmpty() == true) {
                 item {

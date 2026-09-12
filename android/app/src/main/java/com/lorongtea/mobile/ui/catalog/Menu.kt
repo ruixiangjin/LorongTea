@@ -43,6 +43,7 @@ import com.lorongtea.mobile.data.MenuItem
 import com.lorongtea.mobile.data.totalCents
 import com.lorongtea.mobile.ui.campaign.CampaignCard
 import com.lorongtea.mobile.ui.campaign.CampaignOffer
+import com.lorongtea.mobile.ui.campaign.forStore
 import com.lorongtea.mobile.ui.common.RemoteState
 import com.lorongtea.mobile.ui.common.loadRemote
 import com.lorongtea.mobile.ui.common.money
@@ -119,6 +120,7 @@ class MenuViewModel(
 @Composable
 internal fun MenuScreen(
     state: MenuState,
+    storeId: String,
     store: String,
     refresh: () -> Unit,
     add: (MenuItem) -> Unit,
@@ -128,6 +130,7 @@ internal fun MenuScreen(
     campaign: CampaignOffer? = null,
     openCampaign: (() -> Unit)? = null,
 ) {
+    val activeCampaign = campaign?.forStore(storeId)
     val inCart = state.quantities.values.sumOf { it.toLong() }
     val items = state.menu.data.orEmpty()
     val featured = remember(items) { items.firstOrNull { it.listed && it.name == HOUSE_DRINK } }
@@ -166,9 +169,9 @@ internal fun MenuScreen(
             if (state.menu.data?.isEmpty() == true) {
                 item { EmptyNotice(stringResource(R.string.menu_empty)) }
             }
-            if (campaign != null && openCampaign != null) {
-                item(key = "campaign/${campaign.storeId}/${campaign.campaignId}") {
-                    CampaignCard(campaign, openCampaign)
+            if (activeCampaign != null && openCampaign != null) {
+                item(key = "campaign/${activeCampaign.storeId}/${activeCampaign.campaignId}") {
+                    CampaignCard(activeCampaign, openCampaign)
                 }
             }
             if (featured != null) {
