@@ -1,5 +1,6 @@
 package com.lorongtea.mobile.ui.checkout
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -10,13 +11,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -28,6 +27,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lorongtea.mobile.R
 import com.lorongtea.mobile.data.CartLine
+import com.lorongtea.mobile.data.CartPriceUpdate
 import com.lorongtea.mobile.data.CartProblem
 import com.lorongtea.mobile.data.CartRepository
 import com.lorongtea.mobile.data.CheckoutOutcome
@@ -44,6 +44,8 @@ import com.lorongtea.mobile.ui.components.LoadNotice
 import com.lorongtea.mobile.ui.components.Page
 import com.lorongtea.mobile.ui.components.PrimaryAction
 import com.lorongtea.mobile.ui.components.ScreenHeading
+import com.lorongtea.mobile.ui.components.StatusLabel
+import com.lorongtea.mobile.ui.components.StatusTone
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
@@ -55,6 +57,7 @@ data class CheckoutProgress(
     val submitting: Boolean = false,
     val notice: String? = null,
     val orderId: String? = null,
+    val priceUpdate: CartPriceUpdate? = null,
 )
 
 data class CartState(
@@ -90,7 +93,9 @@ class CartViewModel(
         val current = state.value
         if (current.pending != null || progress.value.submitting) return
         val lines = current.lines.orEmpty()
-        if (lines.isNotEmpty() && lines.totalCents() != null) progress.value = CheckoutProgress(review = lines)
+        if (lines.isNotEmpty() && lines.totalCents() != null && !current.hasUnavailableDrinks()) {
+            progress.value = progress.value.copy(review = lines, notice = null)
+        }
     }
 
     fun dismissReview() {
@@ -106,15 +111,18 @@ class CartViewModel(
 
     private fun submit(action: suspend () -> CheckoutOutcome) {
         if (progress.value.submitting) return
-        progress.value = CheckoutProgress(submitting = true)
+        val previousUpdate = progress.value.priceUpdate
+        progress.value = CheckoutProgress(submitting = true, priceUpdate = previousUpdate)
         viewModelScope.launch {
             progress.value = try {
                 when (val outcome = action()) {
                     is CheckoutOutcome.Confirmed -> CheckoutProgress(orderId = outcome.orderId)
-                    is CheckoutOutcome.Notice -> CheckoutProgress(notice = outcome.message)
+                    is CheckoutOutcome.Notice -> CheckoutProgress(notice = outcome.message, priceUpdate = previousUpdate)
+                    is CheckoutOutcome.Repriced -> CheckoutProgress(priceUpdate = outcome.update)
+                    CheckoutOutcome.AwaitingConfirmation, CheckoutOutcome.RefreshPrices -> CheckoutProgress()
                 }
             } catch (problem: CartProblem) {
-                CheckoutProgress(notice = problem.message)
+                CheckoutProgress(notice = problem.message, priceUpdate = previousUpdate)
             }
         }
     }
@@ -135,6 +143,13 @@ fun CartScreen(
     val pending = state.pending
     val total = lines.totalCents()
     val editable = pending == null && !state.checkout.submitting
+    val hasUnavailable = state.hasUnavailableDrinks()
+    val reviewed = state.checkout.review
+    BackHandler(enabled = reviewed != null, onBack = dismissReview)
+    if (reviewed != null) {
+        CheckoutReview(reviewed, store, confirm, dismissReview)
+        return
+    }
     Page(
         title = store,
         back = back,
@@ -154,13 +169,13 @@ fun CartScreen(
                     val label = when {
                         state.checkout.submitting -> R.string.order_submitting
                         pending?.priceChanged == true -> R.string.order_refresh_prices
-                        pending != null -> R.string.order_retry
+                        pending != null -> R.string.checkout_find_order
                         else -> R.string.review_order
                     }
                     PrimaryAction(
                         label = stringResource(label),
                         onClick = if (pending != null) recover else review,
-                        enabled = !state.checkout.submitting && (pending != null || total != null),
+                        enabled = !state.checkout.submitting && (pending != null || (total != null && !hasUnavailable)),
                     )
                 }
             }
@@ -181,6 +196,14 @@ fun CartScreen(
                     EmptyNotice(stringResource(description))
                 }
             }
+            val priceUpdate = state.checkout.priceUpdate
+            if (hasUnavailable) {
+                item { EmptyNotice(stringResource(R.string.checkout_remove_unavailable)) }
+            } else if (priceUpdate != null && pending == null && lines.isNotEmpty()) {
+                item {
+                    PriceUpdateNotice(priceUpdate, total)
+                }
+            }
             if (state.lines?.isEmpty() == true && pending == null) {
                 item { EmptyNotice(stringResource(R.string.cart_empty)) }
             }
@@ -188,28 +211,106 @@ fun CartScreen(
                 item { LoadNotice(false, stringResource(R.string.cart_total_too_large)) }
             }
             items(lines, key = { it.productId }) { line ->
-                CartItem(line, editable, change)
+                CartItem(line, editable, line.productId in priceUpdate?.unavailableProducts.orEmpty(), change)
             }
         }
     }
-    state.checkout.review?.totalCents()?.let { reviewedTotal ->
-        AlertDialog(
-            onDismissRequest = dismissReview,
-            title = { Text(stringResource(R.string.confirm_order)) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(stringResource(R.string.checkout_store, store), style = MaterialTheme.typography.titleMedium)
-                    Text(stringResource(R.string.checkout_pay_later, money(reviewedTotal)))
-                }
-            },
-            confirmButton = { Button(onClick = confirm) { Text(stringResource(R.string.place_order)) } },
-            dismissButton = { TextButton(onClick = dismissReview) { Text(stringResource(R.string.keep_editing)) } },
-        )
+}
+
+internal fun CartState.hasUnavailableDrinks(): Boolean =
+    lines.orEmpty().any { it.productId in checkout.priceUpdate?.unavailableProducts.orEmpty() }
+
+@Composable
+private fun PriceUpdateNotice(update: CartPriceUpdate, cartTotal: Long?) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+    ) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+            Text(stringResource(R.string.checkout_prices_review), style = MaterialTheme.typography.labelLarge)
+            val before = update.previousTotal
+            val after = update.updatedTotal
+            if (before != null && after != null && after == cartTotal && before != after &&
+                update.unavailableProducts.isEmpty()
+            ) {
+                CheckoutAmount(stringResource(R.string.checkout_previous_total), before)
+                CheckoutAmount(stringResource(R.string.checkout_updated_total), after)
+            }
+        }
     }
 }
 
 @Composable
-private fun CartItem(line: CartLine, editable: Boolean, change: (String, Int) -> Unit) {
+private fun CheckoutReview(lines: List<CartLine>, store: String, confirm: () -> Unit, back: () -> Unit) {
+    val total = lines.totalCents() ?: return
+    Page(
+        title = stringResource(R.string.confirm_order),
+        back = back,
+        bottomBar = {
+            BottomPanel {
+                CheckoutAmount(stringResource(R.string.cart_total), total)
+                PrimaryAction(stringResource(R.string.place_order), confirm)
+            }
+        },
+    ) {
+        LazyColumn(
+            contentPadding = PaddingValues(top = 12.dp, bottom = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            item {
+                ScreenHeading(
+                    stringResource(R.string.review_order),
+                    stringResource(R.string.checkout_confirm_description),
+                )
+            }
+            item {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    shape = MaterialTheme.shapes.large,
+                ) {
+                    Text(
+                        stringResource(R.string.checkout_store, store),
+                        Modifier.padding(16.dp),
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                }
+            }
+            items(lines, key = { it.productId }) { line ->
+                Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                    Text(
+                        stringResource(R.string.order_line, line.quantity, drinkName(line.name)),
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                    Text(stringResource(R.string.cart_unit_price, money(line.priceCents)))
+                    HorizontalDivider(Modifier.padding(top = 6.dp))
+                }
+            }
+            item {
+                EmptyNotice(stringResource(R.string.checkout_pay_later, money(total)))
+            }
+        }
+    }
+}
+
+@Composable
+private fun CheckoutAmount(label: String, total: Long) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text(label, Modifier.weight(1f), style = MaterialTheme.typography.labelLarge)
+        Text(money(total), style = MaterialTheme.typography.titleMedium)
+    }
+}
+
+@Composable
+private fun CartItem(
+    line: CartLine,
+    editable: Boolean,
+    unavailable: Boolean,
+    change: (String, Int) -> Unit,
+) {
     val name = drinkName(line.name)
     val removeLabel = stringResource(R.string.cart_remove_one, name)
     val addLabel = stringResource(R.string.cart_add_one, name)
@@ -226,7 +327,11 @@ private fun CartItem(line: CartLine, editable: Boolean, change: (String, Int) ->
             DrinkArtwork(line.name, Modifier.size(width = 64.dp, height = 76.dp))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Text(name, style = MaterialTheme.typography.titleMedium)
-                Text(stringResource(R.string.cart_unit_price, money(line.priceCents)))
+                if (unavailable) {
+                    StatusLabel(stringResource(R.string.checkout_item_unavailable), StatusTone.ATTENTION)
+                } else {
+                    Text(stringResource(R.string.cart_unit_price, money(line.priceCents)))
+                }
                 Surface(color = MaterialTheme.colorScheme.surfaceVariant, shape = MaterialTheme.shapes.medium) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         IconButton(
@@ -241,7 +346,7 @@ private fun CartItem(line: CartLine, editable: Boolean, change: (String, Int) ->
                         )
                         IconButton(
                             onClick = { change(line.productId, 1) },
-                            enabled = editable,
+                            enabled = editable && !unavailable,
                             modifier = Modifier.semantics { contentDescription = addLabel },
                         ) { Text("+", style = MaterialTheme.typography.titleLarge) }
                     }

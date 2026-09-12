@@ -5,6 +5,12 @@ import kotlinx.coroutines.flow.Flow
 
 class CartProblem(message: String) : Exception(message)
 
+data class CartPriceUpdate(
+    val previousTotal: Long?,
+    val updatedTotal: Long?,
+    val unavailableProducts: Set<String>,
+)
+
 class CartRepository(private val database: LorongDatabase) {
     private val dao = database.cart()
     private val pending = database.pending()
@@ -59,16 +65,28 @@ class CartRepository(private val database: LorongDatabase) {
         pending.markPriceChanged(checkout.accountId, checkout.storeId, checkout.key)
     }
 
-    internal suspend fun reprice(checkout: PendingCheckout, menu: List<MenuItem>): Boolean = database.withTransaction {
-        if (pending.delete(checkout.accountId, checkout.storeId, checkout.key) == 0) return@withTransaction false
-        val current = menu.filter { it.listed }.associateBy { it.productId }
-        var unavailable = false
-        for (line in dao.snapshot(checkout.accountId, checkout.storeId)) {
-            val item = current[line.productId]
-            if (item == null) unavailable = true else dao.save(line.copy(name = item.name, priceCents = item.priceCents))
+    internal suspend fun reprice(pending: PendingCheckout, menu: List<MenuItem>): CartPriceUpdate? =
+        database.withTransaction {
+            if (this.pending.delete(pending.accountId, pending.storeId, pending.key) == 0) {
+                return@withTransaction null
+            }
+            val original = dao.snapshot(pending.accountId, pending.storeId)
+            val available = menu.filter { it.listed }.associateBy { it.productId }
+            val updated = original.map { line ->
+                val item = available[line.productId]
+                if (item == null) line else line.copy(name = item.name, priceCents = item.priceCents)
+            }
+            original.zip(updated).forEach { (old, new) ->
+                if (old != new) dao.save(new)
+            }
+            CartPriceUpdate(
+                previousTotal = original.totalCents(),
+                updatedTotal = updated.totalCents(),
+                unavailableProducts = original.mapNotNull { line ->
+                    line.productId.takeUnless(available::containsKey)
+                }.toSet(),
+            )
         }
-        unavailable
-    }
 
     private suspend fun requireEditable(accountId: String, storeId: String) {
         if (pending.find(accountId, storeId) != null) {

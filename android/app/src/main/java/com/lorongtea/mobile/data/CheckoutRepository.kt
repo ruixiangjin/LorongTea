@@ -12,6 +12,9 @@ private data class CheckoutBody(val storeId: String, val items: List<CheckoutIte
 sealed interface CheckoutOutcome {
     data class Confirmed(val orderId: String) : CheckoutOutcome
     data class Notice(val message: String) : CheckoutOutcome
+    data class Repriced(val update: CartPriceUpdate) : CheckoutOutcome
+    data object AwaitingConfirmation : CheckoutOutcome
+    data object RefreshPrices : CheckoutOutcome
 }
 
 class CheckoutRepository(
@@ -49,9 +52,9 @@ class CheckoutRepository(
                 carts.reject(pending)
                 return CheckoutOutcome.Notice(error.message.orEmpty())
             }
-            return awaitingConfirmation()
+            return CheckoutOutcome.AwaitingConfirmation
         } catch (_: IOException) {
-            return awaitingConfirmation()
+            return CheckoutOutcome.AwaitingConfirmation
         }
 
         carts.complete(pending)
@@ -62,19 +65,14 @@ class CheckoutRepository(
         val menu = try {
             catalog.menu(pending.storeId)
         } catch (_: ApiFailure) {
-            return CheckoutOutcome.Notice("Prices changed. Refresh prices before reviewing your order again.")
+            return CheckoutOutcome.RefreshPrices
         } catch (_: IOException) {
-            return CheckoutOutcome.Notice("Prices changed. Reconnect and refresh prices before placing your order.")
+            return CheckoutOutcome.RefreshPrices
         }
-        val unavailable = carts.reprice(pending, menu)
-        return CheckoutOutcome.Notice(
-            if (unavailable) "Prices changed. Remove unavailable items and review the new total."
-            else "Prices changed. Review the new total before placing your order.",
-        )
+        val update = carts.reprice(pending, menu)
+            ?: return CheckoutOutcome.Notice("There is no order awaiting confirmation for this store.")
+        return CheckoutOutcome.Repriced(update)
     }
-
-    private fun awaitingConfirmation() =
-        CheckoutOutcome.Notice("Order awaiting confirmation. Retry to recover the result.")
 
     private companion object {
         val JSON = "application/json; charset=utf-8".toMediaType()

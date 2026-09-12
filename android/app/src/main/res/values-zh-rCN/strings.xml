@@ -96,4 +96,11 @@
     <string name="menu_featured_description">炭焙乌龙，搭配鲜奶</string>
     <string name="menu_cart_total">%1$d 杯 · %2$s</string>
     <string name="menu_cart_recover">找回订单</string>
+    <string name="checkout_previous_total">原合计</string>
+    <string name="checkout_updated_total">更新后合计</string>
+    <string name="checkout_prices_review">价格已更新，请核对新金额后再提交订单。</string>
+    <string name="checkout_remove_unavailable">部分饮品已不可点，请移除后再提交订单。</string>
+    <string name="checkout_item_unavailable">已不可点</string>
+    <string name="checkout_find_order">找回订单</string>
+    <string name="checkout_confirm_description">请核对饮品和取茶门店。</string>
 </resources>
