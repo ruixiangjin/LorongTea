@@ -41,6 +41,8 @@ import com.lorongtea.mobile.data.CartRepository
 import com.lorongtea.mobile.data.CatalogRepository
 import com.lorongtea.mobile.data.MenuItem
 import com.lorongtea.mobile.data.totalCents
+import com.lorongtea.mobile.ui.campaign.CampaignCard
+import com.lorongtea.mobile.ui.campaign.CampaignOffer
 import com.lorongtea.mobile.ui.common.RemoteState
 import com.lorongtea.mobile.ui.common.loadRemote
 import com.lorongtea.mobile.ui.common.money
@@ -115,14 +117,16 @@ class MenuViewModel(
 }
 
 @Composable
-fun MenuScreen(
+internal fun MenuScreen(
     state: MenuState,
     store: String,
     refresh: () -> Unit,
     add: (MenuItem) -> Unit,
     cart: () -> Unit,
     changeStore: () -> Unit,
-    navigation: @Composable () -> Unit = {},
+    navigation: (@Composable () -> Unit)? = null,
+    campaign: CampaignOffer? = null,
+    openCampaign: (() -> Unit)? = null,
 ) {
     val inCart = state.quantities.values.sumOf { it.toLong() }
     val items = state.menu.data.orEmpty()
@@ -137,7 +141,7 @@ fun MenuScreen(
         bottomBar = {
             Column {
                 if (inCart > 0 || state.pendingCheckout) {
-                    BottomPanel(padNavigationBars = false) {
+                    BottomPanel(padNavigationBars = navigation == null) {
                         val total = state.cartTotal
                         val label = when {
                             state.pendingCheckout -> stringResource(R.string.menu_cart_recover)
@@ -147,7 +151,7 @@ fun MenuScreen(
                         PrimaryAction(label, cart)
                     }
                 }
-                navigation()
+                navigation?.invoke()
             }
         },
     ) {
@@ -161,6 +165,11 @@ fun MenuScreen(
             state.cartError?.let { item { LoadNotice(false, it) } }
             if (state.menu.data?.isEmpty() == true) {
                 item { EmptyNotice(stringResource(R.string.menu_empty)) }
+            }
+            if (campaign != null && openCampaign != null) {
+                item(key = "campaign/${campaign.storeId}/${campaign.campaignId}") {
+                    CampaignCard(campaign, openCampaign)
+                }
             }
             if (featured != null) {
                 item(key = "featured") {
