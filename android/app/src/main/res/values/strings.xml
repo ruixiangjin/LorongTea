@@ -131,4 +131,11 @@
         <item quantity="one">Limit %1$d drink per customer at this store</item>
         <item quantity="other">Limit %1$d drinks per customer at this store</item>
     </plurals>
+    <string name="staff_order_queue">Store orders</string>
+    <string name="staff_queue_empty">No orders in this queue.</string>
+    <string name="staff_start_order">Accept order</string>
+    <string name="staff_mark_ready">Mark ready</string>
+    <string name="staff_advancing">Updating order…</string>
+    <string name="staff_read_failed">Could not refresh. Check the connection and try again.</string>
+    <string name="staff_update_unknown">The update could not be confirmed. Refresh the order before continuing.</string>
 </resources>

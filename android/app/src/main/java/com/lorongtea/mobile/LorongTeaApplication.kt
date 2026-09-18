@@ -10,6 +10,7 @@ import com.lorongtea.mobile.data.LorongDatabase
 import com.lorongtea.mobile.data.OrderRepository
 import com.lorongtea.mobile.data.SessionRepository
 import com.lorongtea.mobile.data.SessionStore
+import com.lorongtea.mobile.data.StaffOrderRepository
 
 class LorongTeaApplication : Application() {
     val sessions = SessionStore()
@@ -22,5 +23,6 @@ class LorongTeaApplication : Application() {
     }
     val carts by lazy { CartRepository(database) }
     val orders by lazy { OrderRepository(backend) }
+    internal val staffOrders by lazy { StaffOrderRepository(backend) }
     val checkout by lazy { CheckoutRepository(backend, carts, catalog) }
 }

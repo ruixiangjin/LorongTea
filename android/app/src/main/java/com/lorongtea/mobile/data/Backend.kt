@@ -61,6 +61,36 @@ internal interface LorongTeaApi {
         @Path("orderId") orderId: String,
     ): Envelope<Order>
 
+    @GET("api/v1/staff/stores/{storeId}/orders")
+    suspend fun staffOrders(
+        @Header("Authorization") authorization: String,
+        @Path("storeId") storeId: String,
+        @Query("status") status: OrderStatus,
+        @Query("limit") limit: Int,
+        @Query("offset") offset: Int,
+    ): Envelope<List<Order>>
+
+    @GET("api/v1/staff/stores/{storeId}/orders/{orderId}")
+    suspend fun staffOrder(
+        @Header("Authorization") authorization: String,
+        @Path("storeId") storeId: String,
+        @Path("orderId") orderId: String,
+    ): Envelope<Order>
+
+    @POST("api/v1/staff/stores/{storeId}/orders/{orderId}/start")
+    suspend fun startOrder(
+        @Header("Authorization") authorization: String,
+        @Path("storeId") storeId: String,
+        @Path("orderId") orderId: String,
+    ): Envelope<Order>
+
+    @POST("api/v1/staff/stores/{storeId}/orders/{orderId}/ready")
+    suspend fun markOrderReady(
+        @Header("Authorization") authorization: String,
+        @Path("storeId") storeId: String,
+        @Path("orderId") orderId: String,
+    ): Envelope<Order>
+
 }
 
 class ApiFailure(

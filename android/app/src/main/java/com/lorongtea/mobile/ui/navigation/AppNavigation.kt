@@ -43,6 +43,6 @@ fun AppNavigation(app: LorongTeaApplication) {
             LoginScreen(login.state.collectAsStateWithLifecycle().value, session.expired, login::signIn)
         }
         customerNavigation(app, nav, sessionState)
-        staffNavigation(app, sessionState)
+        staffNavigation(app, nav, sessionState)
     }
 }

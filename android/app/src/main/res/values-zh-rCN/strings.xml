@@ -130,4 +130,11 @@
     <plurals name="campaign_limit">
         <item quantity="other">此门店每位顾客限购 %1$d 杯</item>
     </plurals>
+    <string name="staff_order_queue">本店订单</string>
+    <string name="staff_queue_empty">此状态暂无订单。</string>
+    <string name="staff_start_order">接单</string>
+    <string name="staff_mark_ready">确认出餐</string>
+    <string name="staff_advancing">正在更新订单…</string>
+    <string name="staff_read_failed">刷新失败，请检查网络后重试。</string>
+    <string name="staff_update_unknown">暂时无法确认更新结果，请先刷新订单。</string>
 </resources>
