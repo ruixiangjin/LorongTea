@@ -1,10 +1,20 @@
 package com.lorongtea.mobile.data
 
 internal enum class OrderAdvance { START, READY }
+internal enum class PaymentConfirmationResult { CONFIRMED, ALREADY_PAID }
+
+internal data class PaymentConfirmation(
+    val result: PaymentConfirmationResult,
+    val orderId: String,
+    val status: OrderStatus,
+    val paymentStatus: PaymentStatus,
+    val totalCents: Long,
+)
 
 internal interface StaffOrderSource {
     suspend fun detail(orderId: String): Order
     suspend fun advance(orderId: String, action: OrderAdvance): Order
+    suspend fun confirmPayment(orderId: String): PaymentConfirmation
 }
 
 internal class StaffOrderRepository(private val backend: Backend) {
@@ -17,6 +27,11 @@ internal class StaffOrderRepository(private val backend: Backend) {
         override suspend fun detail(orderId: String): Order = backend.request(read = true, session = account) {
             staffOrder(account.authorization, storeId, orderId).data
         }
+
+        override suspend fun confirmPayment(orderId: String): PaymentConfirmation =
+            backend.request(read = false, session = account) {
+                confirmOrderPayment(account.authorization, storeId, orderId).data
+            }
 
         override suspend fun advance(orderId: String, action: OrderAdvance): Order =
             backend.request(read = false, session = account) {

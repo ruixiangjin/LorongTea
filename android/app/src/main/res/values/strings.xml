@@ -138,4 +138,15 @@
     <string name="staff_advancing">Updating order…</string>
     <string name="staff_read_failed">Could not refresh. Check the connection and try again.</string>
     <string name="staff_update_unknown">The update could not be confirmed. Refresh the order before continuing.</string>
+    <string name="staff_confirm_payment">Confirm payment</string>
+    <string name="staff_payment_question">Confirm in-store payment?</string>
+    <string name="staff_payment_amount">Confirm after collecting %1$s at the counter.</string>
+    <string name="staff_confirming_payment">Confirming payment…</string>
+    <string name="staff_payment_confirmed">Payment confirmed.</string>
+    <string name="staff_payment_already">Payment was already confirmed.</string>
+    <string name="staff_payment_verified">The order is already marked as paid.</string>
+    <string name="staff_payment_retry">The order is still unpaid. You can confirm again after collecting payment.</string>
+    <string name="staff_payment_check">Check payment status</string>
+    <string name="staff_not_now">Not now</string>
+    <string name="staff_order_unchanged">The order status has not changed. You can try again.</string>
 </resources>

@@ -69,6 +69,7 @@ internal fun NavGraphBuilder.staffNavigation(
                 store, orderId, order.state.collectAsStateWithLifecycle().value,
                 refresh = order::refresh,
                 advance = order::advance,
+                confirmPayment = order::confirmPayment,
                 back = { nav.popBackStack() },
             )
         }

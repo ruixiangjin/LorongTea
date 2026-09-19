@@ -7,6 +7,8 @@ import com.lorongtea.mobile.data.ApiFailure
 import com.lorongtea.mobile.data.Order
 import com.lorongtea.mobile.data.OrderAdvance
 import com.lorongtea.mobile.data.OrderStatus
+import com.lorongtea.mobile.data.PaymentConfirmationResult
+import com.lorongtea.mobile.data.PaymentStatus
 import com.lorongtea.mobile.data.StaffOrderSource
 import com.lorongtea.mobile.ui.common.display
 import java.io.IOException
@@ -14,15 +16,21 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
+internal enum class StaffOrderAction { ADVANCE, PAYMENT }
+
 internal data class StaffOrderState(
     val order: Order? = null,
     val loading: Boolean = false,
-    val updating: Boolean = false,
+    val action: StaffOrderAction? = null,
     val needsRefresh: Boolean = false,
     val message: Int? = null,
+    val notice: Int? = null,
     val error: String? = null,
 ) {
+    val updating get() = action != null
     val busy get() = loading || updating
+    val awaitingPayment get() = order?.status == OrderStatus.READY && order.paymentStatus == PaymentStatus.UNPAID
+    val canConfirmPayment get() = awaitingPayment && !busy && !needsRefresh
 }
 
 internal class StaffOrderViewModel(
@@ -34,7 +42,7 @@ internal class StaffOrderViewModel(
 
     fun refresh() {
         if (mutable.value.busy) return
-        mutable.value = mutable.value.copy(loading = true, message = null, error = null)
+        mutable.value = mutable.value.copy(loading = true, message = null, notice = null, error = null)
         viewModelScope.launch { readOrder() }
     }
 
@@ -46,33 +54,78 @@ internal class StaffOrderViewModel(
             OrderStatus.PREPARING -> OrderAdvance.READY
             else -> return
         }
-        update {
+        update(StaffOrderAction.ADVANCE, current.order?.status) {
             val updated = source.advance(orderId, action)
             mutable.value = mutable.value.copy(order = updated.copy(items = updated.items ?: current.order?.items))
         }
     }
 
-    private fun update(action: suspend () -> Unit) {
-        mutable.value = mutable.value.copy(updating = true, message = null, error = null)
+    fun confirmPayment() {
+        val current = mutable.value
+        if (!current.canConfirmPayment) return
+        val order = requireNotNull(current.order)
+        update(StaffOrderAction.PAYMENT, order.status) {
+            val confirmation = source.confirmPayment(orderId)
+            if (confirmation.orderId != orderId || confirmation.paymentStatus != PaymentStatus.PAID) {
+                throw IOException("Unexpected payment confirmation")
+            }
+            val message = when (confirmation.result) {
+                PaymentConfirmationResult.CONFIRMED -> R.string.staff_payment_confirmed
+                PaymentConfirmationResult.ALREADY_PAID -> R.string.staff_payment_already
+            }
+            mutable.value = mutable.value.copy(
+                order = order.copy(
+                    status = confirmation.status,
+                    paymentStatus = confirmation.paymentStatus,
+                    totalCents = confirmation.totalCents,
+                ),
+                notice = message,
+            )
+            readOrder()
+        }
+    }
+
+    private fun update(action: StaffOrderAction, previousStatus: OrderStatus?, send: suspend () -> Unit) {
+        mutable.value = mutable.value.copy(action = action, message = null, notice = null, error = null)
         viewModelScope.launch {
             try {
-                action()
+                send()
             } catch (failure: ApiFailure) {
                 mutable.value = mutable.value.copy(needsRefresh = true)
-                if (failure.status != 401) readOrder(errorAfterRead = failure.display())
+                if (failure.status != 401) {
+                    readOrder(reconcile = action, previousStatus = previousStatus, errorAfterRead = failure.display())
+                }
             } catch (_: IOException) {
                 mutable.value = mutable.value.copy(needsRefresh = true)
-                readOrder()
+                readOrder(reconcile = action, previousStatus = previousStatus)
             } finally {
-                mutable.value = mutable.value.copy(updating = false)
+                mutable.value = mutable.value.copy(action = null)
             }
         }
     }
 
-    private suspend fun readOrder(errorAfterRead: String? = null) {
+    private suspend fun readOrder(
+        reconcile: StaffOrderAction? = null,
+        previousStatus: OrderStatus? = null,
+        errorAfterRead: String? = null,
+    ) {
         try {
             val order = source.detail(orderId)
-            mutable.value = mutable.value.copy(order = order, needsRefresh = false, error = errorAfterRead)
+            val notice = when {
+                reconcile == StaffOrderAction.PAYMENT && order.paymentStatus == PaymentStatus.PAID ->
+                    R.string.staff_payment_verified
+                reconcile == StaffOrderAction.PAYMENT && order.status == OrderStatus.READY && errorAfterRead == null ->
+                    R.string.staff_payment_retry
+                reconcile == StaffOrderAction.ADVANCE && previousStatus == order.status && errorAfterRead == null ->
+                    R.string.staff_order_unchanged
+                else -> mutable.value.notice
+            }
+            mutable.value = mutable.value.copy(
+                order = order,
+                needsRefresh = false,
+                notice = notice,
+                error = errorAfterRead.takeIf { notice == null },
+            )
         } catch (failure: ApiFailure) {
             mutable.value = mutable.value.copy(error = failure.display())
         } catch (_: IOException) {

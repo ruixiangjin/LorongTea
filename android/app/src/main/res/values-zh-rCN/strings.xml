@@ -137,4 +137,15 @@
     <string name="staff_advancing">正在更新订单…</string>
     <string name="staff_read_failed">刷新失败，请检查网络后重试。</string>
     <string name="staff_update_unknown">暂时无法确认更新结果，请先刷新订单。</string>
+    <string name="staff_confirm_payment">确认收款</string>
+    <string name="staff_payment_question">确认到店收款？</string>
+    <string name="staff_payment_amount">柜台实际收到 %1$s 后再确认。</string>
+    <string name="staff_confirming_payment">正在确认收款…</string>
+    <string name="staff_payment_confirmed">收款已确认。</string>
+    <string name="staff_payment_already">这笔订单此前已确认收款。</string>
+    <string name="staff_payment_verified">已查询到这笔订单的收款记录。</string>
+    <string name="staff_payment_retry">已核对订单仍为待付款。实际收到款后可再次确认。</string>
+    <string name="staff_payment_check">查询收款状态</string>
+    <string name="staff_not_now">暂不确认</string>
+    <string name="staff_order_unchanged">已核对订单状态未变，可以重试。</string>
 </resources>

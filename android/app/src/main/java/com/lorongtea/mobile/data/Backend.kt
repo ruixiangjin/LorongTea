@@ -91,6 +91,13 @@ internal interface LorongTeaApi {
         @Path("orderId") orderId: String,
     ): Envelope<Order>
 
+    @POST("api/v1/staff/stores/{storeId}/orders/{orderId}/confirm-payment")
+    suspend fun confirmOrderPayment(
+        @Header("Authorization") authorization: String,
+        @Path("storeId") storeId: String,
+        @Path("orderId") orderId: String,
+    ): Envelope<PaymentConfirmation>
+
 }
 
 class ApiFailure(
