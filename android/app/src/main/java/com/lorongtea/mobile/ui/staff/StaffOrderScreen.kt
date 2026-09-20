@@ -42,6 +42,7 @@ internal fun StaffOrderScreen(
     refresh: () -> Unit,
     advance: () -> Unit,
     confirmPayment: () -> Unit,
+    openPickup: () -> Unit,
     back: () -> Unit,
 ) {
     var paymentDialog by rememberSaveable { mutableStateOf(false) }
@@ -53,18 +54,20 @@ internal fun StaffOrderScreen(
     }
     val checkingPayment = state.awaitingPayment && state.needsRefresh
     val paymentAction = state.awaitingPayment || state.action == StaffOrderAction.PAYMENT
+    val canRedeem = order?.status == OrderStatus.READY && order.paymentStatus == PaymentStatus.PAID
     Page(
         title = stringResource(R.string.order_number, orderId),
         back = back,
         actions = { RefreshAction(refresh, enabled = !state.busy) },
         bottomBar = {
-            if (action != null || paymentAction) {
+            if (action != null || paymentAction || canRedeem) {
                 BottomPanel {
                     val label = when {
                         state.action == StaffOrderAction.PAYMENT -> R.string.staff_confirming_payment
                         state.action == StaffOrderAction.ADVANCE -> R.string.staff_advancing
                         checkingPayment -> R.string.staff_payment_check
                         paymentAction -> R.string.staff_confirm_payment
+                        canRedeem -> R.string.staff_pickup
                         else -> requireNotNull(action)
                     }
                     PrimaryAction(
@@ -72,6 +75,7 @@ internal fun StaffOrderScreen(
                         onClick = when {
                             checkingPayment -> refresh
                             paymentAction -> ({ paymentDialog = true })
+                            canRedeem -> openPickup
                             else -> advance
                         },
                         enabled = !state.busy && (checkingPayment || !state.needsRefresh),

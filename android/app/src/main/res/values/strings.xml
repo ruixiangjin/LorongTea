@@ -149,4 +149,15 @@
     <string name="staff_payment_check">Check payment status</string>
     <string name="staff_not_now">Not now</string>
     <string name="staff_order_unchanged">The order status has not changed. You can try again.</string>
+    <string name="staff_pickup">Redeem pickup</string>
+    <string name="staff_pickup_description">Paste or enter the customer’s pickup code. Check the result before handing over the drinks.</string>
+    <string name="staff_pickup_format">Enter the 22-character code from the customer’s order.</string>
+    <string name="staff_redeeming">Checking pickup code…</string>
+    <string name="staff_pickup_redeemed">Pickup redeemed. You can hand over the drinks.</string>
+    <string name="staff_pickup_already">This order was already collected.</string>
+    <string name="staff_pickup_unpaid">Confirm payment before redeeming this order.</string>
+    <string name="staff_pickup_invalid">No matching pickup code at this store. Check the code and store.</string>
+    <string name="staff_pickup_unknown">The result could not be confirmed. Retry with the same code before handing over the drinks.</string>
+    <string name="staff_pickup_retry">Retry the same code</string>
+    <string name="staff_pickup_next">Redeem another pickup</string>
 </resources>

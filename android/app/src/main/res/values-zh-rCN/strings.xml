@@ -148,4 +148,15 @@
     <string name="staff_payment_check">查询收款状态</string>
     <string name="staff_not_now">暂不确认</string>
     <string name="staff_order_unchanged">已核对订单状态未变，可以重试。</string>
+    <string name="staff_pickup">取茶核销</string>
+    <string name="staff_pickup_description">粘贴或输入顾客的取茶码，核对结果后再交付饮品。</string>
+    <string name="staff_pickup_format">请输入顾客订单上的 22 位取茶码。</string>
+    <string name="staff_redeeming">正在核验取茶码…</string>
+    <string name="staff_pickup_redeemed">核销成功，可以交付饮品。</string>
+    <string name="staff_pickup_already">这笔订单已核销。</string>
+    <string name="staff_pickup_unpaid">请先确认收款，再核销取茶。</string>
+    <string name="staff_pickup_invalid">本店查不到此取茶码，请核对取茶码和门店。</string>
+    <string name="staff_pickup_unknown">暂时无法确认核销结果。交付饮品前，请用原取茶码重试。</string>
+    <string name="staff_pickup_retry">用原取茶码重试</string>
+    <string name="staff_pickup_next">核销下一单</string>
 </resources>

@@ -98,6 +98,13 @@ internal interface LorongTeaApi {
         @Path("orderId") orderId: String,
     ): Envelope<PaymentConfirmation>
 
+    @POST("api/v1/staff/stores/{storeId}/orders/redeem")
+    suspend fun redeemPickup(
+        @Header("Authorization") authorization: String,
+        @Path("storeId") storeId: String,
+        @Body request: PickupRequest,
+    ): Envelope<PickupRedemption>
+
 }
 
 class ApiFailure(
