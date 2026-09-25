@@ -13,6 +13,7 @@ import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.Header
+import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.Path
 import retrofit2.http.Query
@@ -104,6 +105,27 @@ internal interface LorongTeaApi {
         @Path("storeId") storeId: String,
         @Body request: PickupRequest,
     ): Envelope<PickupRedemption>
+
+    @GET("api/v1/staff/stores/{storeId}/menu-items")
+    suspend fun staffMenu(
+        @Header("Authorization") authorization: String,
+        @Path("storeId") storeId: String,
+    ): Envelope<List<StaffMenuItem>>
+
+    @PATCH("api/v1/staff/stores/{storeId}/menu-items/{productId}")
+    suspend fun updateStaffMenu(
+        @Header("Authorization") authorization: String,
+        @Path("storeId") storeId: String,
+        @Path("productId") productId: String,
+        @Body patch: StaffMenuPatch,
+    ): Envelope<StaffMenuItem>
+
+    @POST("api/v1/staff/stores/{storeId}/stock-adjustments")
+    suspend fun adjustStock(
+        @Header("Authorization") authorization: String,
+        @Path("storeId") storeId: String,
+        @Body request: StockAdjustmentRequest,
+    ): Envelope<StockAdjustmentResult>
 
 }
 

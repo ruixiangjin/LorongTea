@@ -27,6 +27,8 @@ import com.lorongtea.mobile.data.SessionState
 import com.lorongtea.mobile.data.Store
 import com.lorongtea.mobile.ui.common.RemoteViewModel
 import com.lorongtea.mobile.ui.staff.StaffHomeScreen
+import com.lorongtea.mobile.ui.staff.StaffMenuScreen
+import com.lorongtea.mobile.ui.staff.StaffMenuViewModel
 import com.lorongtea.mobile.ui.staff.StaffOrderScreen
 import com.lorongtea.mobile.ui.staff.StaffOrderViewModel
 import com.lorongtea.mobile.ui.staff.StaffQueueViewModel
@@ -63,6 +65,9 @@ internal fun NavGraphBuilder.staffNavigation(
                         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             OutlinedButton(onClick = { nav.navigate("staff-redeem") { launchSingleTop = true } }) {
                                 Text(stringResource(R.string.staff_pickup))
+                            }
+                            OutlinedButton(onClick = { nav.navigate("staff-menu") { launchSingleTop = true } }) {
+                                Text(stringResource(R.string.staff_menu))
                             }
                         }
                     },
@@ -119,6 +124,27 @@ internal fun NavGraphBuilder.staffNavigation(
                         nav.navigate("staff-order/$orderId") { popUpTo("staff-redeem") { inclusive = true } }
                     }
                 },
+            )
+        }
+        composable("staff-menu") { entry ->
+            val account = session.account?.takeIf { it.role == Role.STAFF } ?: return@composable
+            val assignment = staffAssignment(app, account, nav, entry)
+            val state by assignment.state.collectAsStateWithLifecycle()
+            val store = state.data
+            if (store == null) {
+                StaffStoreLoading(state, assignment::refresh, app.sessions::signOut)
+                return@composable
+            }
+            val menu = viewModel { StaffMenuViewModel(app.staffInventory.forStore(account, store.id)) }
+            LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { menu.refresh() }
+            StaffMenuScreen(
+                store = store,
+                state = menu.state.collectAsStateWithLifecycle().value,
+                refresh = menu::refresh,
+                update = menu::update,
+                adjust = menu::adjust,
+                recover = menu::recover,
+                back = { nav.popBackStack() },
             )
         }
     }

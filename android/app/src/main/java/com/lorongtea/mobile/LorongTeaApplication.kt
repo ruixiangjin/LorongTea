@@ -7,6 +7,8 @@ import com.lorongtea.mobile.data.CatalogRepository
 import com.lorongtea.mobile.data.CartRepository
 import com.lorongtea.mobile.data.CheckoutRepository
 import com.lorongtea.mobile.data.LorongDatabase
+import com.lorongtea.mobile.data.MIGRATION_1_2
+import com.lorongtea.mobile.data.StaffInventoryRepository
 import com.lorongtea.mobile.data.OrderRepository
 import com.lorongtea.mobile.data.SessionRepository
 import com.lorongtea.mobile.data.SessionStore
@@ -19,10 +21,13 @@ class LorongTeaApplication : Application() {
     val catalog by lazy { CatalogRepository(backend) }
 
     private val database by lazy {
-        Room.databaseBuilder(this, LorongDatabase::class.java, "lorong-tea.db").build()
+        Room.databaseBuilder(this, LorongDatabase::class.java, "lorong-tea.db")
+            .addMigrations(MIGRATION_1_2)
+            .build()
     }
     val carts by lazy { CartRepository(database) }
     val orders by lazy { OrderRepository(backend) }
     internal val staffOrders by lazy { StaffOrderRepository(backend) }
+    internal val staffInventory by lazy { StaffInventoryRepository(backend, database.pendingStock()) }
     val checkout by lazy { CheckoutRepository(backend, carts, catalog) }
 }

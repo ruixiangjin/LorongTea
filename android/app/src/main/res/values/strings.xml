@@ -160,4 +160,26 @@
     <string name="staff_pickup_unknown">The result could not be confirmed. Retry with the same code before handing over the drinks.</string>
     <string name="staff_pickup_retry">Retry the same code</string>
     <string name="staff_pickup_next">Redeem another pickup</string>
+    <string name="staff_menu">Menu and stock</string>
+    <string name="staff_menu_empty">This store has no menu items.</string>
+    <string name="staff_listed">Listed</string>
+    <string name="staff_unlisted">Unlisted</string>
+    <string name="staff_available_stock">Stock: %1$d</string>
+    <string name="staff_edit_menu">Edit price and listing</string>
+    <string name="staff_price_field">Price (RM)</string>
+    <string name="staff_price_format">Enter a price with up to two decimal places.</string>
+    <string name="staff_save">Save changes</string>
+    <string name="staff_close">Close</string>
+    <string name="staff_menu_saved">Menu changes saved.</string>
+    <string name="staff_menu_not_applied">The menu was refreshed. Check the current price and listing before editing again.</string>
+    <string name="staff_menu_unknown">Could not verify the menu change. Refresh before editing again.</string>
+    <string name="staff_adjust_stock">Adjust stock</string>
+    <string name="staff_stock_delta">Quantity change (+ or −)</string>
+    <string name="staff_stock_reason">Reason for adjustment</string>
+    <string name="staff_stock_invalid">Enter a nonzero whole number and a reason of up to 200 characters.</string>
+    <string name="staff_stock_pending">Stock adjustment awaiting confirmation</string>
+    <string name="staff_stock_pending_detail">Change: %1$s · %2$s</string>
+    <string name="staff_stock_retry">Recover stock adjustment</string>
+    <string name="staff_stock_saved">Stock adjustment confirmed.</string>
+    <string name="staff_saving">Saving…</string>
 </resources>

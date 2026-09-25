@@ -159,4 +159,26 @@
     <string name="staff_pickup_unknown">暂时无法确认核销结果。交付饮品前，请用原取茶码重试。</string>
     <string name="staff_pickup_retry">用原取茶码重试</string>
     <string name="staff_pickup_next">核销下一单</string>
+    <string name="staff_menu">菜单与库存</string>
+    <string name="staff_menu_empty">本店暂无菜单商品。</string>
+    <string name="staff_listed">已上架</string>
+    <string name="staff_unlisted">已下架</string>
+    <string name="staff_available_stock">现有库存：%1$d</string>
+    <string name="staff_edit_menu">改价与上下架</string>
+    <string name="staff_price_field">售价（RM）</string>
+    <string name="staff_price_format">请输入最多两位小数的售价。</string>
+    <string name="staff_save">保存修改</string>
+    <string name="staff_close">关闭</string>
+    <string name="staff_menu_saved">菜单修改已保存。</string>
+    <string name="staff_menu_not_applied">已重查菜单，请先核对当前售价和上架状态。</string>
+    <string name="staff_menu_unknown">暂时无法确认菜单修改结果，请刷新后再编辑。</string>
+    <string name="staff_adjust_stock">调整库存</string>
+    <string name="staff_stock_delta">库存变动量（正数或负数）</string>
+    <string name="staff_stock_reason">调整原因</string>
+    <string name="staff_stock_invalid">请输入非零整数及不超过 200 字的调整原因。</string>
+    <string name="staff_stock_pending">库存调整待确认</string>
+    <string name="staff_stock_pending_detail">变动：%1$s · %2$s</string>
+    <string name="staff_stock_retry">找回库存调整结果</string>
+    <string name="staff_stock_saved">库存调整已确认。</string>
+    <string name="staff_saving">正在保存…</string>
 </resources>
