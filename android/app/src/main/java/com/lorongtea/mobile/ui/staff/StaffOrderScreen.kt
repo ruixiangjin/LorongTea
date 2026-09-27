@@ -32,7 +32,6 @@ import com.lorongtea.mobile.ui.components.RefreshAction
 import com.lorongtea.mobile.ui.components.StatusLabel
 import com.lorongtea.mobile.ui.components.StatusTone
 import com.lorongtea.mobile.ui.orders.OrderReceipt
-import com.lorongtea.mobile.ui.orders.OrderStatusLabel
 
 @Composable
 internal fun StaffOrderScreen(
@@ -92,7 +91,7 @@ internal fun StaffOrderScreen(
             LoadNotice((state.loading && order == null) || state.updating, error, refresh)
             if (order != null) {
                 Text(storeName(store), style = MaterialTheme.typography.titleLarge)
-                OrderStatusLabel(order.status)
+                StaffStatusLabel(order.status)
                 StatusLabel(
                     stringResource(if (order.paymentStatus == PaymentStatus.PAID) R.string.payment_paid else R.string.payment_unpaid),
                     if (order.paymentStatus == PaymentStatus.PAID) StatusTone.ACTIVE else StatusTone.ATTENTION,

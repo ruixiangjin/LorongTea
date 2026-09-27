@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.lorongtea.mobile.R
 import com.lorongtea.mobile.data.ApiFailure
 import com.lorongtea.mobile.data.PickupRedemption
+import com.lorongtea.mobile.data.isDefinitiveRejection
 import com.lorongtea.mobile.ui.common.display
 import java.io.IOException
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -54,7 +55,7 @@ internal class StaffPickupViewModel(
                 when {
                     failure.code == "PAYMENT_REQUIRED" -> StaffPickupState(code, problem = R.string.staff_pickup_unpaid)
                     failure.status == 404 -> StaffPickupState(code, problem = R.string.staff_pickup_invalid)
-                    failure.status >= 500 || failure.status in listOf(408, 425, 429) ->
+                    failure.status != 401 && !failure.isDefinitiveRejection() ->
                         StaffPickupState(code, problem = R.string.staff_pickup_unknown)
                     else -> StaffPickupState(code, error = failure.display())
                 }

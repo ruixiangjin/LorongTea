@@ -5,8 +5,6 @@ import androidx.lifecycle.viewModelScope
 import com.lorongtea.mobile.data.ApiFailure
 import com.lorongtea.mobile.data.Order
 import com.lorongtea.mobile.data.OrderStatus
-import com.lorongtea.mobile.data.Session
-import com.lorongtea.mobile.data.StaffOrderRepository
 import com.lorongtea.mobile.ui.common.display
 import java.io.IOException
 import kotlinx.coroutines.Job
@@ -25,9 +23,7 @@ internal data class StaffQueue(
 )
 
 internal class StaffQueueViewModel(
-    private val repository: StaffOrderRepository,
-    private val account: Session,
-    private val storeId: String,
+    private val loadPage: suspend (OrderStatus, Int, Int) -> List<Order>,
 ) : ViewModel() {
     private val mutable = MutableStateFlow(StaffQueue())
     val state = mutable.asStateFlow()
@@ -56,7 +52,7 @@ internal class StaffQueueViewModel(
         mutable.value = previous.copy(loading = true, error = null, offline = false)
         request = viewModelScope.launch {
             try {
-                val page = repository.queue(account, storeId, previous.filter, PAGE_SIZE, start)
+                val page = loadPage(previous.filter, PAGE_SIZE, start)
                 ensureActive()
                 offset = start + page.size
                 val orders = if (start == 0) page else (previous.orders.orEmpty() + page).distinctBy { it.id }

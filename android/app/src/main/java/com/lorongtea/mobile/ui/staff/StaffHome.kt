@@ -30,7 +30,8 @@ import com.lorongtea.mobile.ui.components.LoadNotice
 import com.lorongtea.mobile.ui.components.Page
 import com.lorongtea.mobile.ui.components.RefreshAction
 import com.lorongtea.mobile.ui.components.ScreenHeading
-import com.lorongtea.mobile.ui.orders.OrderStatusLabel
+import com.lorongtea.mobile.ui.components.StatusLabel
+import com.lorongtea.mobile.ui.orders.tone
 import com.lorongtea.mobile.ui.orders.label
 
 @Composable
@@ -73,7 +74,7 @@ internal fun StaffHomeScreen(
                         FilterChip(
                             selected = status == queue.filter,
                             onClick = { filter(status) },
-                            label = { Text(status.label()) },
+                            label = { Text(status.staffLabel()) },
                         )
                     }
                 }
@@ -103,9 +104,22 @@ private fun StaffOrderCard(order: Order, open: () -> Unit) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(stringResource(R.string.order_number, order.id), style = MaterialTheme.typography.titleLarge)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                OrderStatusLabel(order.status)
+                StaffStatusLabel(order.status)
                 Text(money(order.totalCents), style = MaterialTheme.typography.titleMedium)
             }
         }
     }
+}
+
+@Composable
+internal fun StaffStatusLabel(status: OrderStatus) {
+    StatusLabel(status.staffLabel(), status.tone())
+}
+
+@Composable
+private fun OrderStatus.staffLabel(): String = when (this) {
+    OrderStatus.CREATED -> stringResource(R.string.staff_queue_created)
+    OrderStatus.PREPARING -> stringResource(R.string.staff_queue_preparing)
+    OrderStatus.READY -> stringResource(R.string.staff_queue_ready)
+    OrderStatus.COMPLETED, OrderStatus.CANCELLED -> label()
 }

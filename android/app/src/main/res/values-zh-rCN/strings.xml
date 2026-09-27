@@ -181,4 +181,7 @@
     <string name="staff_stock_retry">找回库存调整结果</string>
     <string name="staff_stock_saved">库存调整已确认。</string>
     <string name="staff_saving">正在保存…</string>
+    <string name="staff_queue_created">待接单</string>
+    <string name="staff_queue_preparing">制作中</string>
+    <string name="staff_queue_ready">已出餐</string>
 </resources>

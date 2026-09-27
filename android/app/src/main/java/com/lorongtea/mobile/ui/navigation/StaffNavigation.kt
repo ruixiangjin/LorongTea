@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -13,6 +14,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavGraphBuilder
@@ -51,7 +53,11 @@ internal fun NavGraphBuilder.staffNavigation(
             if (store == null) {
                 StaffStoreLoading(state, assignment::refresh, app.sessions::signOut)
             } else {
-                val orders = viewModel(key = store.id) { StaffQueueViewModel(app.staffOrders, account, store.id) }
+                val orders = viewModel(key = store.id) {
+                    StaffQueueViewModel { status, limit, offset ->
+                        app.staffOrders.queue(account, store.id, status, limit, offset)
+                    }
+                }
                 LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { orders.refresh() }
                 StaffHomeScreen(
                     store = store,
@@ -85,7 +91,9 @@ internal fun NavGraphBuilder.staffNavigation(
             }
             val orderId = requireNotNull(entry.arguments?.getString("orderId"))
             val order = viewModel { StaffOrderViewModel(app.staffOrders.forStore(account, store.id), orderId) }
-            LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { order.refresh() }
+            LaunchedEffect(entry, order) {
+                entry.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) { order.observeWhileVisible() }
+            }
             StaffOrderScreen(
                 store, orderId, order.state.collectAsStateWithLifecycle().value,
                 refresh = order::refresh,

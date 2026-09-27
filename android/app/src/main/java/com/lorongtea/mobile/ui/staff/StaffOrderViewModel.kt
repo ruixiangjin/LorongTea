@@ -12,6 +12,9 @@ import com.lorongtea.mobile.data.PaymentStatus
 import com.lorongtea.mobile.data.StaffOrderSource
 import com.lorongtea.mobile.ui.common.display
 import java.io.IOException
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -39,6 +42,19 @@ internal class StaffOrderViewModel(
 ) : ViewModel() {
     private val mutable = MutableStateFlow(StaffOrderState())
     val state = mutable.asStateFlow()
+
+    suspend fun observeWhileVisible() {
+        do {
+            if (!mutable.value.busy) {
+                mutable.value = mutable.value.copy(loading = true)
+                readOrder()
+            }
+            when (mutable.value.order?.status) {
+                OrderStatus.COMPLETED, OrderStatus.CANCELLED -> return
+                else -> delay(POLL_INTERVAL_MS)
+            }
+        } while (true)
+    }
 
     fun refresh() {
         if (mutable.value.busy) return
@@ -111,6 +127,7 @@ internal class StaffOrderViewModel(
     ) {
         try {
             val order = source.detail(orderId)
+            currentCoroutineContext().ensureActive()
             val notice = when {
                 reconcile == StaffOrderAction.PAYMENT && order.paymentStatus == PaymentStatus.PAID ->
                     R.string.staff_payment_verified
@@ -123,16 +140,23 @@ internal class StaffOrderViewModel(
             mutable.value = mutable.value.copy(
                 order = order,
                 needsRefresh = false,
+                message = null,
                 notice = notice,
                 error = errorAfterRead.takeIf { notice == null },
             )
         } catch (failure: ApiFailure) {
+            currentCoroutineContext().ensureActive()
             mutable.value = mutable.value.copy(error = failure.display())
         } catch (_: IOException) {
+            currentCoroutineContext().ensureActive()
             val message = if (mutable.value.needsRefresh) R.string.staff_update_unknown else R.string.staff_read_failed
             mutable.value = mutable.value.copy(message = message)
         } finally {
             mutable.value = mutable.value.copy(loading = false)
         }
+    }
+
+    private companion object {
+        const val POLL_INTERVAL_MS = 5_000L
     }
 }

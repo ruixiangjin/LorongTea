@@ -182,4 +182,7 @@
     <string name="staff_stock_retry">Recover stock adjustment</string>
     <string name="staff_stock_saved">Stock adjustment confirmed.</string>
     <string name="staff_saving">Saving…</string>
+    <string name="staff_queue_created">New orders</string>
+    <string name="staff_queue_preparing">In preparation</string>
+    <string name="staff_queue_ready">Ready</string>
 </resources>
