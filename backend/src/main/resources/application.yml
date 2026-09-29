@@ -2,7 +2,7 @@ spring:
   application:
     name: lorong-tea
   datasource:
-    url: jdbc:mysql://127.0.0.1:${LORONG_DB_PORT:3307}/lorong_tea?connectionTimeZone=UTC&forceConnectionTimeZoneToSession=true
+    url: jdbc:mysql://${LORONG_DB_HOST:127.0.0.1}:${LORONG_DB_PORT:3307}/lorong_tea?connectionTimeZone=UTC&forceConnectionTimeZoneToSession=true
     username: lorong_tea
     password: ${LORONG_DB_PASSWORD:lorong-tea-local}
   jackson:

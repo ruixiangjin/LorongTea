@@ -17,5 +17,26 @@ services:
       timeout: 3s
       retries: 20
 
+  app:
+    build: ./backend
+    environment:
+      SPRING_PROFILES_ACTIVE: local
+      LORONG_DB_HOST: mysql
+      LORONG_DB_PORT: "3306"
+      LORONG_DB_PASSWORD: ${LORONG_DB_PASSWORD:-lorong-tea-local}
+      LORONG_JWT_SECRET: ${LORONG_JWT_SECRET:-}
+      LORONG_DEMO_PASSWORD: ${LORONG_DEMO_PASSWORD:-}
+    depends_on:
+      mysql:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${LORONG_API_PORT:-8080}:8080"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "--show-error", "http://127.0.0.1:8080/actuator/health/readiness"]
+      interval: 5s
+      timeout: 3s
+      start_period: 20s
+      retries: 12
+
 volumes:
   mysql-data:

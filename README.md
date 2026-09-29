@@ -6,17 +6,17 @@ Lorong Tea models a takeaway milk tea chain in Malaysia. The Spring Boot API ser
 
 ## Run locally
 
-Use Eclipse Temurin 21.0.12+8 and Docker Compose. From the repository root:
+Install Docker with the Compose plugin. Copy `.env.example` to `.env`. Put the output of `openssl rand -base64 32` in `LORONG_JWT_SECRET` and choose a value for `LORONG_DEMO_PASSWORD`.
 
 ```sh
-export LORONG_JWT_SECRET="$(openssl rand -base64 32)"
-export LORONG_DEMO_PASSWORD='choose-a-local-password'
-docker compose up -d --wait mysql
-cd backend
-./mvnw spring-boot:run -Dspring-boot.run.profiles=local
+docker compose up -d --build --wait
+curl -fsS http://127.0.0.1:8080/api/v1/ping
+docker compose logs -f app
 ```
 
-Flyway sets up MySQL on startup. The `local` profile loads sample menus and creates `demo-customer`, `demo-bb-staff`, `demo-bb-staff-2` and `demo-pj-staff` with the chosen demo password. Existing accounts retain their passwords.
+Flyway migrates MySQL on startup. The `local` profile loads sample menus and creates `demo-customer`, `demo-bb-staff`, `demo-bb-staff-2` and `demo-pj-staff` with the chosen demo password. Existing accounts retain their passwords. The `mysql-data` volume keeps orders across container rebuilds and `docker compose down`. MySQL applies the configured database password when it first initializes an empty volume.
+
+To run the API from source with Temurin 21.0.12+8, export the same database password, JWT key and demo password in your shell, start only MySQL with `docker compose up -d --wait mysql`, and run `./mvnw spring-boot:run -Dspring-boot.run.profiles=local` from `backend/`.
 
 ## Android
 

@@ -6,17 +6,17 @@
 
 ## 本地运行
 
-使用 Eclipse Temurin 21.0.12+8 和 Docker Compose。在仓库根目录执行：
+安装 Docker 和 Compose 插件。将 `.env.example` 复制为 `.env`，把 `openssl rand -base64 32` 的输出填入 `LORONG_JWT_SECRET`，再为 `LORONG_DEMO_PASSWORD` 设置一个演示密码。
 
 ```sh
-export LORONG_JWT_SECRET="$(openssl rand -base64 32)"
-export LORONG_DEMO_PASSWORD='choose-a-local-password'
-docker compose up -d --wait mysql
-cd backend
-./mvnw spring-boot:run -Dspring-boot.run.profiles=local
+docker compose up -d --build --wait
+curl -fsS http://127.0.0.1:8080/api/v1/ping
+docker compose logs -f app
 ```
 
-启动时，Flyway 初始化 MySQL。`local` 配置会载入示例菜单，并使用设定的演示密码创建 `demo-customer`、`demo-bb-staff`、`demo-bb-staff-2` 和 `demo-pj-staff`。已有账号保留原密码。
+Flyway 在启动时迁移 MySQL。`local` 配置载入示例菜单，并用演示密码创建 `demo-customer`、`demo-bb-staff`、`demo-bb-staff-2` 和 `demo-pj-staff`。已有账号保留原密码。重建容器或执行 `docker compose down` 后，订单仍保存在 `mysql-data` 数据卷中。MySQL 首次初始化空卷时会使用配置的数据库密码。
+
+若使用 Temurin 21.0.12+8 从源码启动 API，在终端导出同样的数据库密码、JWT 密钥和演示密码，执行 `docker compose up -d --wait mysql` 启动 MySQL，再在 `backend/` 中执行 `./mvnw spring-boot:run -Dspring-boot.run.profiles=local`。
 
 ## Android
 
