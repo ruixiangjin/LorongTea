@@ -1,0 +1,7 @@
+id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
+1	SIMPLE	orders	NULL	ref	ix_orders_store_status	ix_orders_store_status	20	const,const	3496	100.00	Using filesort
+
+EXPLAIN ANALYZE
+-> Limit: 20 row(s)  (cost=1224 rows=20) (actual time=3.51..3.51 rows=20 loops=1)
+    -> Sort: orders.created_at, orders.id, limit input to 20 row(s) per chunk  (cost=1224 rows=3496) (actual time=3.48..3.48 rows=20 loops=1)
+        -> Index lookup on orders using ix_orders_store_status (store_id=1, status='CREATED')  (cost=1224 rows=3496) (actual time=0.254..3.19 rows=3496 loops=1)
