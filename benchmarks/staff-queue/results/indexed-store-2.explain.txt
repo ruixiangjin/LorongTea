@@ -1,0 +1,6 @@
+id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
+1	SIMPLE	orders	NULL	ref	ix_orders_store_status_created_id	ix_orders_store_status_created_id	20	const,const	19714	100.00	NULL
+
+EXPLAIN ANALYZE
+-> Limit: 20 row(s)  (cost=2910 rows=20) (actual time=0.199..0.201 rows=20 loops=1)
+    -> Index lookup on orders using ix_orders_store_status_created_id (store_id=2, status='CREATED')  (cost=2910 rows=19714) (actual time=0.198..0.2 rows=20 loops=1)

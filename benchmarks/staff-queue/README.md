@@ -22,3 +22,19 @@ MySQL 8.4.11 on Linux ARM64 in Docker Desktop, with the container capped at two 
 | Petaling Jaya | 10,349 | 10,369 | 5.4312 | 5.5969 |
 
 Both baseline plans read every matching order from `ix_orders_store_status` and sort before returning the first 20.
+
+## Indexed results
+
+Run the same comparison with the Flyway migration applied between rounds.
+
+```sh
+python3 benchmarks/staff-queue/run.py /tmp/lorong-queue-comparison \
+  --index-migration backend/src/main/resources/db/migration/V6__index_staff_order_queue.sql
+```
+
+| Store | Rows examined | Median (ms) | p95 (ms) |
+| --- | ---: | ---: | ---: |
+| Bukit Bintang | 20 | 0.1991 | 0.2289 |
+| Petaling Jaya | 20 | 0.2185 | 0.2544 |
+
+The new index keeps the `(store_id, status)` prefix and supplies `(created_at, id)` order within each pending queue. Both indexed plans stopped after 20 rows and omitted the sort. All projected values and the order of both pages matched the baseline. The wider index replaces the previous one, which avoids maintaining both indexes on each write.
