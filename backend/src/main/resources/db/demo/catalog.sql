@@ -22,3 +22,15 @@ FROM (
 JOIN store s ON s.code = demo.store_code
 JOIN product p ON p.sku_code = demo.sku_code
 ON DUPLICATE KEY UPDATE available_qty = store_menu_item.available_qty;
+
+INSERT INTO campaign (code, starts_at, ends_at)
+VALUES ('demo-oolong', UTC_TIMESTAMP(6) - INTERVAL 5 MINUTE, UTC_TIMESTAMP(6) + INTERVAL 7 DAY)
+ON DUPLICATE KEY UPDATE id = id;
+
+INSERT INTO campaign_store (campaign_id, store_id, product_id, price_cents, quota_total, quota_remaining)
+SELECT c.id, s.id, p.id, 690, IF(s.code = 'bukit-bintang', 50, 30), IF(s.code = 'bukit-bintang', 50, 30)
+FROM campaign c
+JOIN product p ON p.sku_code = 'roasted-oolong'
+JOIN store s ON s.code IN ('bukit-bintang', 'petaling-jaya')
+WHERE c.code = 'demo-oolong'
+ON DUPLICATE KEY UPDATE quota_remaining = campaign_store.quota_remaining;
