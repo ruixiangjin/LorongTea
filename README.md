@@ -41,3 +41,11 @@ The backend listens on `http://localhost:8080`. Order and staff routes require a
 Customers use `POST /api/v1/orders` with an `Idempotency-Key` and a body containing `storeId`, `items` and `expectedTotalCents`. Use `GET /api/v1/orders` for history and append `/{orderId}` for details or `/{orderId}/cancel` to cancel with POST.
 
 Staff use `GET /api/v1/staff/stores/{storeId}/orders?status=CREATED` for the pending queue. Under the staff orders path, send POST requests to `/{orderId}/start`, `/{orderId}/ready` and `/{orderId}/confirm-payment`. After payment, send the customer’s `pickupToken` to `POST /api/v1/staff/stores/{storeId}/orders/redeem`.
+
+## Campaign orders
+
+Open the limited-time offer in either store's menu. The demo offer is RM 6.90 for one cup per customer at each store. Bukit Bintang starts with 50 offers and Petaling Jaya with 30. The local demo opens when it is first seeded and closes seven days later. Restarting keeps the original window and remaining quotas.
+
+Use `GET /api/v1/stores/{storeId}/campaigns` to browse. Customers post a UUID `claimId` to `/api/v1/stores/{storeId}/campaigns/{campaignId}/claims` and receive the order ID. If the response is lost, check `GET /api/v1/promotion-claims/{claimId}` first. In Android, the pending request appears under **Orders**. Cancelling a pending campaign order returns the cup to shared stock. The used offer and purchase limit stay in effect.
+
+[Reproduce the synchronous campaign benchmark](benchmarks/sync-campaign/README.md)

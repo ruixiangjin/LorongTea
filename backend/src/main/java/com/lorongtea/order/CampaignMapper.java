@@ -5,6 +5,7 @@ import java.util.List;
 
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Options;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
@@ -48,6 +49,7 @@ interface CampaignMapper {
                 ELSE 'OPEN'
             END FROM campaign WHERE id = #{campaignId}
             """)
+    @Options(flushCache = Options.FlushCachePolicy.TRUE)
     String windowStatus(long campaignId);
 
     @Select("""
@@ -78,6 +80,7 @@ interface CampaignMapper {
             FROM promotion_claim pc JOIN orders o ON o.promotion_claim_id = pc.claim_id
             WHERE pc.claim_id = #{claimId}
             """)
+    @Options(flushCache = Options.FlushCachePolicy.TRUE)
     ReceiptRow receipt(String claimId);
 
     record StoreOffer(long productId, long priceCents, int quotaRemaining) {

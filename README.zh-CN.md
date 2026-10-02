@@ -41,3 +41,11 @@ Flyway 在启动时迁移 MySQL。`local` 配置载入示例菜单，并用演�
 顾客通过 `POST /api/v1/orders` 下单，请求头带 `Idempotency-Key`，请求体包含 `storeId`、`items` 和 `expectedTotalCents`。用 `GET /api/v1/orders` 查询历史，追加 `/{orderId}` 查看详情，或向 `/{orderId}/cancel` 发送 POST 取消订单。
 
 店员通过 `GET /api/v1/staff/stores/{storeId}/orders?status=CREATED` 查看待接单队列。在店员订单路径下，向 `/{orderId}/start`、`/{orderId}/ready` 和 `/{orderId}/confirm-payment` 发送 POST 完成接单、出餐和收款确认。收款后向 `POST /api/v1/staff/stores/{storeId}/orders/redeem` 提交顾客的 `pickupToken`。
+
+## 限时抢购
+
+从任一门店的菜单打开限时活动。演示价为 RM 6.90，同一顾客在每家店可买一杯。武吉免登店有 50 个名额，八打灵再也店有 30 个名额。演示活动在首次载入时开放，七天后结束。重启后沿用原活动窗口和剩余配额。
+
+用 `GET /api/v1/stores/{storeId}/campaigns` 查询活动。顾客向 `/api/v1/stores/{storeId}/campaigns/{campaignId}/claims` 提交 UUID 格式的 `claimId`，成单后返回订单 ID。若响应丢失，先查 `GET /api/v1/promotion-claims/{claimId}`。Android 用户可从「我的订单」找回待确认请求。取消待接活动单会回补共享库存，已经用掉的优惠名额和个人资格仍保留。
+
+[同步抢购基线及复现步骤](benchmarks/sync-campaign/README.md)

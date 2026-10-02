@@ -343,8 +343,13 @@ class OrderIT {
         assertThat(quota(campaignId, 1)).isEqualTo(49);
         mvc.perform(campaignClaim(1, campaignId, UUID.randomUUID().toString(), customer))
                 .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("CAMPAIGN_LIMIT_REACHED"));
-        mvc.perform(campaignClaim(2, campaignId, UUID.randomUUID().toString(), customer))
-                .andExpect(status().isCreated());
+        String otherClaimId = UUID.randomUUID().toString();
+        var otherStoreResponses = race(
+                () -> mvc.perform(campaignClaim(2, campaignId, otherClaimId, customer)).andReturn().getResponse(),
+                () -> mvc.perform(campaignClaim(2, campaignId, otherClaimId, customer)).andReturn().getResponse());
+        assertThat(otherStoreResponses).extracting(response -> response.getStatus()).containsExactlyInAnyOrder(201, 200);
+        assertThat(otherStoreResponses.get(0).getContentAsString())
+                .isEqualTo(otherStoreResponses.get(1).getContentAsString());
         assertThat(quota(campaignId, 2)).isEqualTo(29);
     }
 

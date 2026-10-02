@@ -1,0 +1,17 @@
+{
+  "date": "2026-10-03",
+  "k6_version": "1.5.0",
+  "warmup_claims": 20,
+  "target_requests_per_second": 20,
+  "measurement_seconds": 15,
+  "created_orders": 300,
+  "business_rejections": 0,
+  "technical_failures": 0,
+  "dropped_iterations": 0,
+  "claim_latency_ms": {
+    "med": 15,
+    "p(95)": 24,
+    "p(99)": 40.03,
+    "max": 110
+  }
+}
