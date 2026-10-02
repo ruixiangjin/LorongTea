@@ -7,6 +7,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
@@ -19,6 +20,7 @@ import com.lorongtea.mobile.LorongTeaApplication
 import com.lorongtea.mobile.R
 import com.lorongtea.mobile.data.Session
 import com.lorongtea.mobile.data.Store
+import com.lorongtea.mobile.ui.campaign.toOffer
 import com.lorongtea.mobile.ui.catalog.MenuScreen
 import com.lorongtea.mobile.ui.catalog.MenuViewModel
 import com.lorongtea.mobile.ui.catalog.StoresScreen
@@ -35,6 +37,7 @@ internal fun CustomerHome(
     directory: RemoteViewModel<List<Store>>,
     openCart: (String) -> Unit,
     openOrder: (String) -> Unit,
+    openCampaign: (String, String) -> Unit,
 ) {
     val stores by directory.state.collectAsStateWithLifecycle()
     var tab by rememberSaveable { mutableStateOf(CustomerTab.SHOP) }
@@ -60,6 +63,8 @@ internal fun CustomerHome(
             val orders = viewModel { OrdersViewModel(app.orders, account) }
             LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { orders.refresh() }
             val pending = viewModel { PendingViewModel(app.carts, account.userId) }
+            val campaignPending by remember(account.userId) { app.campaigns.pending(account.userId) }
+                .collectAsStateWithLifecycle(initialValue = emptyList())
             OrdersScreen(
                 state = orders.state.collectAsStateWithLifecycle().value,
                 stores = stores.data.orEmpty(),
@@ -68,6 +73,8 @@ internal fun CustomerHome(
                 open = openOrder,
                 pending = pending.state.collectAsStateWithLifecycle().value.orEmpty(),
                 openPending = openCart,
+                pendingCampaigns = campaignPending,
+                openPendingCampaign = openCampaign,
                 bottomBar = navigation,
             )
         }
@@ -90,15 +97,25 @@ internal fun CustomerHome(
             val menu = viewModel(key = "menu/$storeId") {
                 MenuViewModel(app.catalog, app.carts, account.userId, storeId)
             }
+            val offers = viewModel(key = "campaigns/$storeId") {
+                RemoteViewModel { app.campaigns.offers(account, storeId).map { it.toOffer() } }
+            }
+            val campaignState by offers.state.collectAsStateWithLifecycle()
+            LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { offers.refresh() }
             MenuScreen(
                 state = menu.state.collectAsStateWithLifecycle().value,
                 storeId = storeId,
                 store = storeName(stores.data.orEmpty(), storeId),
-                refresh = menu::refresh,
+                refresh = {
+                    menu.refresh()
+                    offers.refresh()
+                },
                 add = menu::add,
                 cart = { openCart(storeId) },
                 changeStore = { changingStore = true },
                 navigation = navigation,
+                campaigns = campaignState.data.orEmpty(),
+                openCampaign = { openCampaign(storeId, it) },
             )
         }
     }

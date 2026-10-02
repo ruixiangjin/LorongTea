@@ -176,7 +176,7 @@ private fun StorefrontScenario(back: () -> Unit) {
                 },
                 cart = { cart = true },
                 changeStore = { storeIndex = 1 - storeIndex },
-                campaign = sampleOffer(store, opening, CampaignExample.STORE_STATUS),
+                campaigns = listOf(sampleOffer(store, opening, CampaignExample.STORE_STATUS)),
                 openCampaign = { campaign = true },
             )
         }

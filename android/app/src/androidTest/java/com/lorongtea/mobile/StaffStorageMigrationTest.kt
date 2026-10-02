@@ -6,6 +6,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.lorongtea.mobile.data.LorongDatabase
 import com.lorongtea.mobile.data.MIGRATION_1_2
+import com.lorongtea.mobile.data.MIGRATION_2_3
 import java.util.UUID
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
@@ -45,11 +46,11 @@ class StaffStorageMigrationTest {
                 """.trimIndent())
             }
             val room = Room.databaseBuilder(context, LorongDatabase::class.java, name)
-                .addMigrations(MIGRATION_1_2)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                 .build()
             try {
                 val migrated = room.openHelper.writableDatabase
-                assertEquals(2, migrated.version)
+                assertEquals(3, migrated.version)
                 migrated.query("SELECT quantity FROM cart_line").use {
                     assertTrue(it.moveToFirst())
                     assertEquals(2, it.getInt(0))

@@ -30,6 +30,26 @@ internal interface LorongTeaApi {
     @GET("api/v1/stores/{storeId}/menu")
     suspend fun menu(@Path("storeId") storeId: String): Envelope<List<MenuItem>>
 
+    @GET("api/v1/stores/{storeId}/campaigns")
+    suspend fun campaigns(
+        @Header("Authorization") authorization: String,
+        @Path("storeId") storeId: String,
+    ): Envelope<List<CampaignDto>>
+
+    @POST("api/v1/stores/{storeId}/campaigns/{campaignId}/claims")
+    suspend fun claimCampaign(
+        @Header("Authorization") authorization: String,
+        @Path("storeId") storeId: String,
+        @Path("campaignId") campaignId: String,
+        @Body request: ClaimRequest,
+    ): Envelope<ClaimReceipt>
+
+    @GET("api/v1/promotion-claims/{claimId}")
+    suspend fun claimReceipt(
+        @Header("Authorization") authorization: String,
+        @Path("claimId") claimId: String,
+    ): Envelope<ClaimReceipt>
+
     @POST("api/v1/auth/login")
     suspend fun login(@Body credentials: Credentials): Envelope<LoginResult>
 

@@ -75,7 +75,7 @@ internal fun CampaignCard(offer: CampaignOffer, open: () -> Unit) {
 
 @Composable
 internal fun CampaignDetailScreen(
-    offer: CampaignOffer,
+    offer: CampaignOffer?,
     store: String,
     receipt: CampaignReceipt,
     dispatch: (CampaignAction) -> Unit,
@@ -115,7 +115,7 @@ internal fun CampaignDetailScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             controls()
-            CampaignOfferDetails(offer, store, time)
+            if (offer != null) CampaignOfferDetails(offer, store, time)
             CampaignReceiptNotice(receipt, time)
         }
     }

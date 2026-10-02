@@ -127,10 +127,10 @@ internal fun MenuScreen(
     cart: () -> Unit,
     changeStore: () -> Unit,
     navigation: (@Composable () -> Unit)? = null,
-    campaign: CampaignOffer? = null,
-    openCampaign: (() -> Unit)? = null,
+    campaigns: List<CampaignOffer> = emptyList(),
+    openCampaign: ((String) -> Unit)? = null,
 ) {
-    val activeCampaign = campaign?.forStore(storeId)
+    val storeCampaigns = campaigns.mapNotNull { it.forStore(storeId) }
     val inCart = state.quantities.values.sumOf { it.toLong() }
     val items = state.menu.data.orEmpty()
     val featured = remember(items) { items.firstOrNull { it.listed && it.name == HOUSE_DRINK } }
@@ -169,9 +169,9 @@ internal fun MenuScreen(
             if (state.menu.data?.isEmpty() == true) {
                 item { EmptyNotice(stringResource(R.string.menu_empty)) }
             }
-            if (activeCampaign != null && openCampaign != null) {
-                item(key = "campaign/${activeCampaign.storeId}/${activeCampaign.campaignId}") {
-                    CampaignCard(activeCampaign, openCampaign)
+            if (openCampaign != null) {
+                items(storeCampaigns, key = { "campaign/${it.campaignId}" }) { campaign ->
+                    CampaignCard(campaign) { openCampaign(campaign.campaignId) }
                 }
             }
             if (featured != null) {

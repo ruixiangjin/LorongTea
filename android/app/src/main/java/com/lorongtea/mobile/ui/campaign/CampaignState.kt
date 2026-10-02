@@ -1,5 +1,7 @@
 package com.lorongtea.mobile.ui.campaign
 
+import com.lorongtea.mobile.data.CampaignDto
+
 internal enum class CampaignAvailability { UPCOMING, OPEN, SOLD_OUT, ENDED, LIMIT_REACHED }
 
 internal data class CampaignOffer(
@@ -41,16 +43,16 @@ internal sealed interface CampaignAction {
     data class OpenOrder(val orderId: String) : CampaignAction
 }
 
-internal fun campaignAction(offer: CampaignOffer, receipt: CampaignReceipt, now: Long): CampaignAction =
+internal fun campaignAction(offer: CampaignOffer?, receipt: CampaignReceipt, now: Long): CampaignAction =
     when (receipt) {
         is CampaignReceipt.OrderCreated -> CampaignAction.OpenOrder(receipt.orderId)
         is CampaignReceipt.Unconfirmed -> CampaignAction.CheckReceipt(receipt.claimId)
         is CampaignReceipt.Accepted -> CampaignAction.CheckReceipt(receipt.claimId)
         CampaignReceipt.Submitting -> CampaignAction.None
         is CampaignReceipt.RateLimited -> {
-            if (now < receipt.retryAtMillis) CampaignAction.None else offer.availableAction(now)
+            if (now < receipt.retryAtMillis) CampaignAction.None else offer?.availableAction(now) ?: CampaignAction.None
         }
-        else -> offer.availableAction(now)
+        else -> offer?.availableAction(now) ?: CampaignAction.None
     }
 
 private fun CampaignOffer.availableAction(now: Long): CampaignAction = when (availability) {
@@ -64,3 +66,8 @@ internal fun remainingSeconds(deadlineMillis: Long, nowMillis: Long): Long {
     val remaining = deadlineMillis - nowMillis
     return remaining / 1_000 + if (remaining % 1_000 == 0L) 0 else 1
 }
+
+internal fun CampaignDto.toOffer() = CampaignOffer(
+    campaignId, storeId, drinkName, priceCents, startsAt.time, endsAt.time,
+    CampaignAvailability.valueOf(availability), limitPerCustomer,
+)

@@ -114,9 +114,58 @@ internal val MIGRATION_1_2 = object : Migration(1, 2) {
     }
 }
 
-@Database(entities = [CartLine::class, PendingCheckout::class, PendingStockAdjustment::class], version = 2)
+@Entity(tableName = "pending_campaign_claim", primaryKeys = ["accountId", "storeId", "campaignId"])
+internal data class PendingCampaignClaim(
+    val accountId: String,
+    val storeId: String,
+    val campaignId: String,
+    val claimId: String,
+    val createdAt: Long,
+)
+
+@Dao
+internal interface PendingCampaignDao {
+    @Query("SELECT * FROM pending_campaign_claim WHERE accountId = :accountId ORDER BY createdAt DESC")
+    fun observe(accountId: String): Flow<List<PendingCampaignClaim>>
+
+    @Query("""
+        SELECT * FROM pending_campaign_claim
+        WHERE accountId = :accountId AND storeId = :storeId AND campaignId = :campaignId
+    """)
+    suspend fun find(accountId: String, storeId: String, campaignId: String): PendingCampaignClaim?
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insert(claim: PendingCampaignClaim): Long
+
+    @Query("""
+        DELETE FROM pending_campaign_claim WHERE accountId = :accountId AND storeId = :storeId
+        AND campaignId = :campaignId AND claimId = :claimId
+    """)
+    suspend fun delete(accountId: String, storeId: String, campaignId: String, claimId: String)
+}
+
+internal val MIGRATION_2_3 = object : Migration(2, 3) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("""
+            CREATE TABLE IF NOT EXISTS pending_campaign_claim (
+                accountId TEXT NOT NULL,
+                storeId TEXT NOT NULL,
+                campaignId TEXT NOT NULL,
+                claimId TEXT NOT NULL,
+                createdAt INTEGER NOT NULL,
+                PRIMARY KEY(accountId, storeId, campaignId)
+            )
+        """.trimIndent())
+    }
+}
+
+@Database(
+    entities = [CartLine::class, PendingCheckout::class, PendingStockAdjustment::class, PendingCampaignClaim::class],
+    version = 3,
+)
 abstract class LorongDatabase : RoomDatabase() {
     internal abstract fun cart(): CartDao
     internal abstract fun pending(): PendingCheckoutDao
     internal abstract fun pendingStock(): PendingStockDao
+    internal abstract fun pendingCampaign(): PendingCampaignDao
 }

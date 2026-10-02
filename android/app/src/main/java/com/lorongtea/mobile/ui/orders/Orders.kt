@@ -26,6 +26,7 @@ import com.lorongtea.mobile.data.ApiFailure
 import com.lorongtea.mobile.data.Order
 import com.lorongtea.mobile.data.OrderRepository
 import com.lorongtea.mobile.data.OrderStatus
+import com.lorongtea.mobile.data.PendingCampaignClaim
 import com.lorongtea.mobile.data.PendingCheckout
 import com.lorongtea.mobile.data.Session
 import com.lorongtea.mobile.data.Store
@@ -86,7 +87,7 @@ class OrdersViewModel(private val repository: OrderRepository, private val accou
 }
 
 @Composable
-fun OrdersScreen(
+internal fun OrdersScreen(
     state: OrderHistory,
     stores: List<Store>,
     refresh: () -> Unit,
@@ -94,8 +95,11 @@ fun OrdersScreen(
     open: (String) -> Unit,
     pending: List<PendingCheckout>,
     openPending: (String) -> Unit,
+    pendingCampaigns: List<PendingCampaignClaim>,
+    openPendingCampaign: (String, String) -> Unit,
     bottomBar: @Composable () -> Unit = {},
 ) {
+    val needsAttention = pending.isNotEmpty() || pendingCampaigns.isNotEmpty()
     Page(stringResource(R.string.my_orders), bottomBar = bottomBar, actions = {
         RefreshAction(refresh, enabled = !state.loading)
     }) {
@@ -103,10 +107,25 @@ fun OrdersScreen(
             contentPadding = PaddingValues(top = 12.dp, bottom = 20.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            if (pending.isNotEmpty()) {
+            if (needsAttention) {
                 item(key = "attention") { OrderSectionTitle(stringResource(R.string.orders_needs_attention)) }
                 items(pending, key = { "pending/${it.key}" }) { checkout ->
                     PendingCheckoutCard(checkout, storeName(stores, checkout.storeId)) { openPending(checkout.storeId) }
+                }
+                items(pendingCampaigns, key = { "claim/${it.claimId}" }) { claim ->
+                    Surface(
+                        onClick = { openPendingCampaign(claim.storeId, claim.campaignId) },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = MaterialTheme.shapes.large,
+                        color = MaterialTheme.colorScheme.secondaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                    ) {
+                        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text(storeName(stores, claim.storeId), style = MaterialTheme.typography.titleMedium)
+                            Text(stringResource(R.string.campaign_unknown))
+                            Text(stringResource(R.string.campaign_check_receipt), style = MaterialTheme.typography.labelLarge)
+                        }
+                    }
                 }
             }
             if (!state.orders.isNullOrEmpty()) {
@@ -118,7 +137,7 @@ fun OrdersScreen(
             }
             if (state.orders?.isEmpty() == true) {
                 item {
-                    val message = if (pending.isEmpty()) R.string.orders_empty else R.string.orders_no_confirmed
+                    val message = if (needsAttention) R.string.orders_no_confirmed else R.string.orders_empty
                     EmptyNotice(stringResource(message))
                 }
             }
