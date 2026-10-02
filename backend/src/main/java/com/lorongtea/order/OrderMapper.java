@@ -85,8 +85,9 @@ interface OrderMapper {
     int redeem(@Param("storeId") long storeId, @Param("token") String token);
 
     @Insert("""
-            INSERT INTO orders (customer_id, store_id, idempotency_key, request_hash, total_cents)
-            VALUES (#{customerId}, #{storeId}, #{key}, #{requestHash}, 0)
+            INSERT INTO orders (customer_id, store_id, source, idempotency_key, request_hash,
+                                promotion_claim_id, total_cents)
+            VALUES (#{customerId}, #{storeId}, #{source}, #{key}, #{requestHash}, #{promotionClaimId}, #{totalCents})
             """)
     @Options(useGeneratedKeys = true, keyProperty = "id")
     void insertDraft(OrderDraft draft);

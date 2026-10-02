@@ -294,6 +294,72 @@ class OrderIT {
                 .andExpect(jsonPath("$.data.pickupToken").doesNotHaveJsonPath());
     }
 
+    @Test
+    void sharesTheLastCupAndRecoversTheOriginalCampaignOrder() throws Exception {
+        String customer = token("demo-customer");
+        String staff = token("demo-bb-staff");
+        long productId = jdbc.sql("SELECT id FROM product WHERE sku_code = 'roasted-oolong'")
+                .query(Long.class).single();
+        long campaignId = jdbc.sql("SELECT id FROM campaign WHERE code = 'demo-oolong'")
+                .query(Long.class).single();
+        jdbc.sql("UPDATE store_menu_item SET available_qty = 1 WHERE store_id = 1 AND product_id = :product")
+                .param("product", productId).update();
+        String claimId = UUID.randomUUID().toString();
+        String receipt = "/api/v1/promotion-claims/" + claimId;
+        var responses = race(
+                () -> mvc.perform(campaignClaim(1, campaignId, claimId, customer)).andReturn().getResponse(),
+                () -> mvc.perform(place(customer, UUID.randomUUID().toString(), checkoutBody(productId, 1, 1090)))
+                        .andReturn().getResponse());
+
+        assertThat(responses).extracting(response -> response.getStatus()).containsExactlyInAnyOrder(201, 409);
+        assertThat(quantity(productId)).isZero();
+        if (responses.get(1).getStatus() == 201) {
+            assertThat(quota(campaignId, 1)).isEqualTo(50);
+            mvc.perform(get(receipt).header("Authorization", customer)).andExpect(status().isNotFound());
+            String normalOrder = JsonPath.read(responses.get(1).getContentAsString(), "$.data.id");
+            mvc.perform(authenticatedPost("/api/v1/orders/" + normalOrder + "/cancel", customer))
+                    .andExpect(status().isOk());
+            mvc.perform(campaignClaim(1, campaignId, claimId, customer)).andExpect(status().isCreated());
+        }
+
+        String orderId = JsonPath.read(mvc.perform(get(receipt).header("Authorization", customer))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.status").value("ORDER_CREATED"))
+                .andReturn().getResponse().getContentAsString(), "$.data.orderId");
+        mvc.perform(campaignClaim(1, campaignId, claimId, customer)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.orderId").value(orderId));
+        mvc.perform(campaignClaim(2, campaignId, claimId, customer)).andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("IDEMPOTENCY_CONFLICT"));
+        mvc.perform(get(receipt).header("Authorization", staff)).andExpect(status().isForbidden());
+        mvc.perform(get("/api/v1/orders/" + orderId).header("Authorization", customer))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.source").value("PROMOTION"))
+                .andExpect(jsonPath("$.data.paymentStatus").value("UNPAID"))
+                .andExpect(jsonPath("$.data.items[0].unitPriceCents").value(690));
+
+        assertThat(quota(campaignId, 1)).isEqualTo(49);
+        assertThat(quota(campaignId, 2)).isEqualTo(30);
+        mvc.perform(authenticatedPost("/api/v1/orders/" + orderId + "/cancel", customer))
+                .andExpect(status().isOk());
+        assertThat(quantity(productId)).isEqualTo(1);
+        assertThat(quota(campaignId, 1)).isEqualTo(49);
+        mvc.perform(campaignClaim(1, campaignId, UUID.randomUUID().toString(), customer))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("CAMPAIGN_LIMIT_REACHED"));
+        mvc.perform(campaignClaim(2, campaignId, UUID.randomUUID().toString(), customer))
+                .andExpect(status().isCreated());
+        assertThat(quota(campaignId, 2)).isEqualTo(29);
+    }
+
+    private int quota(long campaignId, long storeId) {
+        return jdbc.sql("SELECT quota_remaining FROM campaign_store WHERE campaign_id = :campaign AND store_id = :store")
+                .param("campaign", campaignId).param("store", storeId).query(Integer.class).single();
+    }
+
+    private MockHttpServletRequestBuilder campaignClaim(long storeId, long campaignId, String claimId, String bearer) {
+        return authenticatedPost("/api/v1/stores/" + storeId + "/campaigns/" + campaignId + "/claims", bearer)
+                .contentType(MediaType.APPLICATION_JSON).content("""
+                        {"claimId":"%s"}
+                        """.formatted(claimId));
+    }
+
     private MockHttpServletRequestBuilder redeemRequest(long storeId, String bearer, String pickupToken) {
         return authenticatedPost("/api/v1/staff/stores/" + storeId + "/orders/redeem", bearer)
                 .contentType(MediaType.APPLICATION_JSON).content("""

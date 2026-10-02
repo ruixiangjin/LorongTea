@@ -36,6 +36,8 @@ class SecurityConfiguration {
                 .authorizeHttpRequests(access -> access
                         .requestMatchers("/api/v1/staff/**").hasRole("STAFF")
                         .requestMatchers("/api/v1/orders", "/api/v1/orders/**").hasRole("CUSTOMER")
+                        .requestMatchers("/api/v1/stores/*/campaigns/*/claims", "/api/v1/promotion-claims/*")
+                        .hasRole("CUSTOMER")
                         .anyRequest().permitAll())
                 .exceptionHandling(handling -> handling
                         .authenticationEntryPoint(unauthorized)
