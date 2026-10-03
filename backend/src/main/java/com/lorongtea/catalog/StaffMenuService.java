@@ -4,6 +4,7 @@ import java.util.List;
 
 import com.lorongtea.api.ApiException;
 import com.lorongtea.auth.AccountIdentity;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -12,10 +13,12 @@ import org.springframework.transaction.annotation.Transactional;
 class StaffMenuService {
     private final StaffStoreAccess access;
     private final MenuMapper menus;
+    private final ApplicationEventPublisher events;
 
-    StaffMenuService(StaffStoreAccess access, MenuMapper menus) {
+    StaffMenuService(StaffStoreAccess access, MenuMapper menus, ApplicationEventPublisher events) {
         this.access = access;
         this.menus = menus;
+        this.events = events;
     }
 
     CatalogService.StoreView assignedStore(AccountIdentity account) {
@@ -37,6 +40,7 @@ class StaffMenuService {
         if (item == null) {
             throw new ApiException(HttpStatus.NOT_FOUND, "MENU_ITEM_NOT_FOUND", "Menu item not found");
         }
+        events.publishEvent(new MenuChanged(storeId));
         return MenuItemView.from(item);
     }
 

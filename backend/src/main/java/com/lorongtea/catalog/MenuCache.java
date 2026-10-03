@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.event.TransactionalEventListener;
 import tools.jackson.core.JacksonException;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.json.JsonMapper;
@@ -66,6 +67,19 @@ class MenuCache {
         } catch (DataAccessException | JacksonException exception) {
             metrics.counter("lorong.menu.cache.failure", "operation", "write").increment();
             log.debug("Menu cache fill failed for store {}", storeId, exception);
+        }
+    }
+
+    @TransactionalEventListener
+    void invalidate(MenuChanged event) {
+        if (!enabled) {
+            return;
+        }
+        try {
+            redis.delete(key(event.storeId()));
+        } catch (DataAccessException exception) {
+            metrics.counter("lorong.menu.cache.failure", "operation", "invalidate").increment();
+            log.warn("Committed menu update could not invalidate the Redis cache for store {}", event.storeId());
         }
     }
 
