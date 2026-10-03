@@ -17,6 +17,17 @@ services:
       timeout: 3s
       retries: 20
 
+  redis:
+    image: redis:7.4.11-alpine@sha256:858f009f9709ce576febc734aa78b8f6d624b82571f9ddb6bda4377c833b3499
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    ports:
+      - "127.0.0.1:${LORONG_REDIS_PORT:-6380}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   app:
     build: ./backend
     environment:
@@ -24,11 +35,16 @@ services:
       LORONG_DB_HOST: mysql
       LORONG_DB_PORT: "3306"
       LORONG_DB_PASSWORD: ${LORONG_DB_PASSWORD:-lorong-tea-local}
+      LORONG_REDIS_ENABLED: "true"
+      LORONG_REDIS_HOST: redis
+      LORONG_REDIS_PORT: "6379"
       LORONG_JWT_SECRET: ${LORONG_JWT_SECRET:-}
       LORONG_DEMO_PASSWORD: ${LORONG_DEMO_PASSWORD:-}
     depends_on:
       mysql:
         condition: service_healthy
+      redis:
+        condition: service_started
     ports:
       - "127.0.0.1:${LORONG_API_PORT:-8080}:8080"
     healthcheck:

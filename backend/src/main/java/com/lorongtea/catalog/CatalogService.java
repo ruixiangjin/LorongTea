@@ -10,10 +10,12 @@ import org.springframework.transaction.annotation.Transactional;
 class CatalogService {
     private final StoreMapper stores;
     private final MenuMapper menus;
+    private final MenuCache cache;
 
-    CatalogService(StoreMapper stores, MenuMapper menus) {
+    CatalogService(StoreMapper stores, MenuMapper menus, MenuCache cache) {
         this.stores = stores;
         this.menus = menus;
+        this.cache = cache;
     }
 
     List<StoreView> listStores() {
@@ -32,10 +34,10 @@ class CatalogService {
             throw new StoreNotFoundException();
         }
 
-        return menus.findByStoreId(storeId).stream()
+        return cache.getOrLoad(storeId, () -> menus.findByStoreId(storeId).stream()
                 .map(row -> new MenuItemView(Long.toString(row.productId()), row.skuCode(),
                         row.name(), row.priceCents(), row.listed()))
-                .toList();
+                .toList());
     }
 
     record StoreView(String id, String code, String name) {
