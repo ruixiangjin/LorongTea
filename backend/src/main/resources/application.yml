@@ -21,6 +21,11 @@ spring:
 lorong:
   redis:
     enabled: ${LORONG_REDIS_ENABLED:false}
+  campaign:
+    rate-limit:
+      enabled: ${LORONG_CAMPAIGN_RATE_LIMIT_ENABLED:${lorong.redis.enabled}}
+      permits-per-second: ${LORONG_CAMPAIGN_PERMITS_PER_SECOND:8}
+      burst: ${LORONG_CAMPAIGN_BURST:4}
 
 management:
   health:

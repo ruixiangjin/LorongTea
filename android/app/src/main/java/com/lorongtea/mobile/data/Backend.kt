@@ -154,6 +154,7 @@ class ApiFailure(
     val code: String?,
     val requestId: String?,
     message: String,
+    val retryAfterSeconds: Long? = null,
 ) : Exception(message)
 
 class Backend(baseUrl: String, private val sessions: SessionStore) {
@@ -214,6 +215,7 @@ class Backend(baseUrl: String, private val sessions: SessionStore) {
             parsed?.code,
             parsed?.requestId ?: response?.headers()?.get("X-Request-ID"),
             parsed?.message ?: "The server returned HTTP ${error.code()}.",
+            response?.headers()?.get("Retry-After")?.toLongOrNull(),
         )
     }
 }

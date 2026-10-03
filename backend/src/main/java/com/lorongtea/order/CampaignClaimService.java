@@ -10,13 +10,31 @@ import org.springframework.stereotype.Service;
 class CampaignClaimService {
     private final CampaignMapper campaigns;
     private final CampaignClaimTransaction transaction;
+    private final CampaignAdmission admission;
 
-    CampaignClaimService(CampaignMapper campaigns, CampaignClaimTransaction transaction) {
+    CampaignClaimService(CampaignMapper campaigns, CampaignClaimTransaction transaction,
+            CampaignAdmission admission) {
         this.campaigns = campaigns;
         this.transaction = transaction;
+        this.admission = admission;
     }
 
     CampaignClaimTransaction.Placement claim(long customerId, long storeId, long campaignId, String claimId) {
+        var replay = replay(customerId, storeId, campaignId, claimId);
+        if (replay != null) {
+            return replay;
+        }
+        try {
+            admission.requirePermit(storeId, campaignId);
+        } catch (ApiException rejection) {
+            // An in-flight request can commit while this one waits for Redis.
+            replay = replay(customerId, storeId, campaignId, claimId);
+            if (replay != null) {
+                return replay;
+            }
+            throw rejection;
+        }
+
         for (int attempt = 0; attempt < 3; attempt++) {
             try {
                 return transaction.claim(customerId, storeId, campaignId, claimId);
@@ -26,6 +44,11 @@ class CampaignClaimService {
         }
         throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "CAMPAIGN_RETRY_REQUIRED",
                 "Retry with the same claim ID");
+    }
+
+    private CampaignClaimTransaction.Placement replay(long customerId, long storeId, long campaignId, String claimId) {
+        var previous = campaigns.receipt(claimId);
+        return previous == null ? null : CampaignClaimTransaction.Placement.replay(previous, customerId, storeId, campaignId);
     }
 
     CampaignMapper.ReceiptRow receipt(long customerId, String claimId) {

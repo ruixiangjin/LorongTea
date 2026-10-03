@@ -1,6 +1,12 @@
 package com.lorongtea;
 
 import java.time.Duration;
+import java.util.Collections;
+import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.Callable;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import com.jayway.jsonpath.JsonPath;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -9,13 +15,16 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.junit.jupiter.Container;
@@ -27,6 +36,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -34,6 +44,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "LORONG_JWT_SECRET=dGhpcy1pcy1hLXRlc3Qtb25seS1qd3Qtc2lnbmluZy1rZXk=",
         "LORONG_DEMO_PASSWORD=integration-test-password",
         "lorong.redis.enabled=true",
+        "lorong.campaign.rate-limit.permits-per-second=1",
+        "lorong.campaign.rate-limit.burst=2",
         "spring.data.redis.timeout=500ms"
 })
 @AutoConfigureMockMvc
@@ -148,11 +160,62 @@ class RedisFeaturesIT {
         }
     }
 
+    @Test
+    void metersNewClaimsAndKeepsExistingReceiptsAvailable() throws Exception {
+        RedisScript<Long> script = RedisScript.of(new ClassPathResource("redis/campaign-token-bucket.lua"), Long.class);
+        String key = "lt:rl:{test:1}";
+        Callable<Long> request = () -> redis.execute(script, List.of(key), "1", "2");
+        try (var workers = Executors.newFixedThreadPool(8)) {
+            var responses = workers.invokeAll(Collections.nCopies(8, request));
+            int accepted = 0;
+            for (var response : responses) {
+                if (response.get() == 0L) {
+                    accepted++;
+                }
+            }
+            assertThat(accepted).isEqualTo(2);
+        }
+        assertThat(redis.getExpire(key, TimeUnit.MILLISECONDS)).isBetween(1L, 2000L);
+        Thread.sleep(1100);
+        assertThat(request.call()).isZero();
+
+        String customer = token("demo-customer");
+        long campaign = jdbc.sql("SELECT id FROM campaign WHERE code = 'demo-oolong'").query(Long.class).single();
+        String claimId = UUID.randomUUID().toString();
+        mvc.perform(claim(1, campaign, claimId, customer)).andExpect(status().isCreated());
+        assertThat(redis.execute(script, List.of("lt:rl:{" + campaign + ":1}"), "1", "2")).isZero();
+        String retryId = UUID.randomUUID().toString();
+        mvc.perform(claim(1, campaign, retryId, customer)).andExpect(status().isTooManyRequests())
+                .andExpect(header().string("Retry-After", "1"));
+        String receipt = "/api/v1/promotion-claims/" + claimId;
+        mvc.perform(claim(1, campaign, claimId, customer)).andExpect(status().isOk());
+        mvc.perform(claim(2, campaign, UUID.randomUUID().toString(), customer)).andExpect(status().isCreated());
+
+        var docker = REDIS.getDockerClient();
+        docker.pauseContainerCmd(REDIS.getContainerId()).exec();
+        try {
+            mvc.perform(claim(1, campaign, retryId, customer)).andExpect(status().isServiceUnavailable())
+                    .andExpect(jsonPath("$.code").value("CAMPAIGN_ADMISSION_UNAVAILABLE"));
+            mvc.perform(get(receipt).header("Authorization", customer)).andExpect(status().isOk());
+            mvc.perform(claim(1, campaign, claimId, customer)).andExpect(status().isOk());
+        } finally {
+            docker.unpauseContainerCmd(REDIS.getContainerId()).exec();
+        }
+    }
+
+    private MockHttpServletRequestBuilder claim(
+            long storeId, long campaignId, String claimId, String customer) {
+        return post("/api/v1/stores/" + storeId + "/campaigns/" + campaignId + "/claims")
+                .header("Authorization", customer)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"claimId\":\"" + claimId + "\"}");
+    }
+
     private void patchPrice(String staff, long productId, int price) throws Exception {
         mvc.perform(patch("/api/v1/staff/stores/1/menu-items/" + productId)
                         .header("Authorization", staff)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"priceCents\" :" + price + "}"))
+                        .content("{\"priceCents\":" + price + "}"))
                 .andExpect(status().isOk());
     }
 

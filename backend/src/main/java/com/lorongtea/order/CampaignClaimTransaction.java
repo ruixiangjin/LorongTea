@@ -25,16 +25,11 @@ class CampaignClaimTransaction {
 
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public Placement claim(long customerId, long storeId, long campaignId, String claimId) {
-        var previous = campaigns.receipt(claimId);
-        if (previous != null) {
-            return replay(previous, customerId, storeId, campaignId);
-        }
-
         var offer = campaigns.lockOffer(campaignId, storeId);
         // A request with the same ID may have committed while this transaction waited for the store.
-        previous = campaigns.receipt(claimId);
+        var previous = campaigns.receipt(claimId);
         if (previous != null) {
-            return replay(previous, customerId, storeId, campaignId);
+            return Placement.replay(previous, customerId, storeId, campaignId);
         }
         var store = stores.selectById(storeId);
         if (store == null || !store.isActive()) {
@@ -67,13 +62,6 @@ class CampaignClaimTransaction {
                 claimId, customerId, campaignId, storeId, "ORDER_CREATED", order.id()), true);
     }
 
-    private Placement replay(CampaignMapper.ReceiptRow previous, long customerId, long storeId, long campaignId) {
-        if (previous.customerId() != customerId || previous.storeId() != storeId || previous.campaignId() != campaignId) {
-            throw conflict("IDEMPOTENCY_CONFLICT", "The claim ID is already in use for a different request");
-        }
-        return new Placement(previous, false);
-    }
-
     private void requireOpen(long campaignId) {
         switch (campaigns.windowStatus(campaignId)) {
             case "UPCOMING" -> throw conflict("CAMPAIGN_NOT_STARTED", "This campaign has not opened yet");
@@ -86,10 +74,17 @@ class CampaignClaimTransaction {
         return conflict("CAMPAIGN_SOLD_OUT", "This offer is sold out at this store");
     }
 
-    private ApiException conflict(String code, String message) {
+    private static ApiException conflict(String code, String message) {
         return new ApiException(HttpStatus.CONFLICT, code, message);
     }
 
     record Placement(CampaignMapper.ReceiptRow receipt, boolean created) {
+        static Placement replay(CampaignMapper.ReceiptRow previous, long customerId, long storeId, long campaignId) {
+            if (previous.customerId() != customerId || previous.storeId() != storeId
+                    || previous.campaignId() != campaignId) {
+                throw conflict("IDEMPOTENCY_CONFLICT", "The claim ID is already in use for a different request");
+            }
+            return new Placement(previous, false);
+        }
     }
 }

@@ -30,7 +30,7 @@ internal sealed interface CampaignReceipt {
     data class OrderCreated(val orderId: String) : CampaignReceipt {
         init { require(orderId.isNotBlank()) }
     }
-    data class RateLimited(val retryAtMillis: Long) : CampaignReceipt
+    data class RateLimited(val retryAtMillis: Long, val pendingClaimId: String? = null) : CampaignReceipt
     data object ServiceUnavailable : CampaignReceipt
     data object Released : CampaignReceipt
 }
@@ -50,7 +50,12 @@ internal fun campaignAction(offer: CampaignOffer?, receipt: CampaignReceipt, now
         is CampaignReceipt.Accepted -> CampaignAction.CheckReceipt(receipt.claimId)
         CampaignReceipt.Submitting -> CampaignAction.None
         is CampaignReceipt.RateLimited -> {
-            if (now < receipt.retryAtMillis) CampaignAction.None else offer?.availableAction(now) ?: CampaignAction.None
+            if (now < receipt.retryAtMillis) {
+                CampaignAction.None
+            } else {
+                receipt.pendingClaimId?.let { CampaignAction.CheckReceipt(it) }
+                    ?: offer?.availableAction(now) ?: CampaignAction.None
+            }
         }
         else -> offer?.availableAction(now) ?: CampaignAction.None
     }

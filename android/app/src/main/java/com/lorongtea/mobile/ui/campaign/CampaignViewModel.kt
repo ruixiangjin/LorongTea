@@ -35,11 +35,12 @@ internal class CampaignViewModel(
 
     val state = combine(mutable, campaigns.pending(session.userId)) { page, pending ->
         val claim = pending.firstOrNull { it.storeId == storeId && it.campaignId == campaignId }
-        if (page.receipt == CampaignReceipt.Idle && claim != null) {
-            page.copy(receipt = CampaignReceipt.Unconfirmed(claim.claimId))
-        } else {
-            page
+        val receipt = when (val current = page.receipt) {
+            is CampaignReceipt.RateLimited -> current.copy(pendingClaimId = claim?.claimId)
+            CampaignReceipt.Idle -> claim?.let { CampaignReceipt.Unconfirmed(it.claimId) } ?: current
+            else -> current
         }
+        page.copy(receipt = receipt)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), CampaignPageState())
 
     init {
@@ -67,8 +68,14 @@ internal class CampaignViewModel(
                 val receipt = orderId?.let { CampaignReceipt.OrderCreated(it) } ?: CampaignReceipt.Idle
                 mutable.update { it.copy(receipt = receipt) }
             } catch (error: ApiFailure) {
-                mutable.update { it.copy(receipt = CampaignReceipt.Idle, error = error.display()) }
-                refresh()
+                if (error.code == "CAMPAIGN_RATE_LIMITED") {
+                    val waitSeconds = error.retryAfterSeconds?.coerceAtLeast(1) ?: 1
+                    val retryAt = System.currentTimeMillis() + waitSeconds * 1_000
+                    mutable.update { it.copy(receipt = CampaignReceipt.RateLimited(retryAt)) }
+                } else {
+                    mutable.update { it.copy(receipt = CampaignReceipt.Idle, error = error.display()) }
+                    refresh()
+                }
             } catch (_: IOException) {
                 mutable.update { it.copy(receipt = CampaignReceipt.Idle) }
             }
