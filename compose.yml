@@ -28,6 +28,24 @@ services:
       timeout: 3s
       retries: 10
 
+  rabbitmq:
+    profiles: ["async"]
+    image: rabbitmq:4.3.5-management-alpine@sha256:b3b8b7f95f5382a19f9ea33540e604f30aad081d37ad9aba72255135765373a1
+    hostname: lorong-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${LORONG_RABBITMQ_USER:-lorong_tea}
+      RABBITMQ_DEFAULT_PASS: ${LORONG_RABBITMQ_PASSWORD:-}
+    ports:
+      - "127.0.0.1:${LORONG_RABBITMQ_PORT:-5673}:5672"
+      - "127.0.0.1:${LORONG_RABBITMQ_UI_PORT:-15673}:15672"
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_port_connectivity"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
   app:
     build: ./backend
     environment:
@@ -41,6 +59,11 @@ services:
       LORONG_CAMPAIGN_RATE_LIMIT_ENABLED: ${LORONG_CAMPAIGN_RATE_LIMIT_ENABLED:-true}
       LORONG_CAMPAIGN_PERMITS_PER_SECOND: ${LORONG_CAMPAIGN_PERMITS_PER_SECOND:-8}
       LORONG_CAMPAIGN_BURST: ${LORONG_CAMPAIGN_BURST:-4}
+      LORONG_CAMPAIGN_ASYNC_ENABLED: ${LORONG_CAMPAIGN_ASYNC_ENABLED:-false}
+      LORONG_RABBITMQ_HOST: rabbitmq
+      LORONG_RABBITMQ_PORT: "5672"
+      LORONG_RABBITMQ_USER: ${LORONG_RABBITMQ_USER:-lorong_tea}
+      LORONG_RABBITMQ_PASSWORD: ${LORONG_RABBITMQ_PASSWORD:-}
       LORONG_MANAGEMENT_ENDPOINTS: health,metrics,prometheus
       LORONG_JWT_SECRET: ${LORONG_JWT_SECRET:-}
       LORONG_DEMO_PASSWORD: ${LORONG_DEMO_PASSWORD:-}
@@ -67,7 +90,25 @@ services:
       - ./ops/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus-data:/prometheus
     depends_on:
-      app:
+      rabbitmq:
+    profiles: ["async"]
+    image: rabbitmq:4.3.5-management-alpine@sha256:b3b8b7f95f5382a19f9ea33540e604f30aad081d37ad9aba72255135765373a1
+    hostname: lorong-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${LORONG_RABBITMQ_USER:-lorong_tea}
+      RABBITMQ_DEFAULT_PASS: ${LORONG_RABBITMQ_PASSWORD:-}
+    ports:
+      - "127.0.0.1:${LORONG_RABBITMQ_PORT:-5673}:5672"
+      - "127.0.0.1:${LORONG_RABBITMQ_UI_PORT:-15673}:15672"
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_port_connectivity"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  app:
         condition: service_healthy
 
   grafana:
@@ -86,5 +127,6 @@ services:
     depends_on: [prometheus]
 
 volumes:
+  rabbitmq-data:
   prometheus-data:
   mysql-data:

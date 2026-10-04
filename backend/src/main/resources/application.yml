@@ -11,6 +11,22 @@ spring:
       port: ${LORONG_REDIS_PORT:6380}
       connect-timeout: 250ms
       timeout: 250ms
+  rabbitmq:
+    host: ${LORONG_RABBITMQ_HOST:127.0.0.1}
+    port: ${LORONG_RABBITMQ_PORT:5673}
+    username: ${LORONG_RABBITMQ_USER:lorong_tea}
+    password: ${LORONG_RABBITMQ_PASSWORD:}
+    connection-timeout: 1s
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    template:
+      mandatory: true
+    listener:
+      simple:
+        acknowledge-mode: manual
+        concurrency: 1
+        max-concurrency: 1
+        prefetch: 8
   jackson:
     datatype:
       datetime:
@@ -22,6 +38,8 @@ lorong:
   redis:
     enabled: ${LORONG_REDIS_ENABLED:false}
   campaign:
+    async:
+      enabled: ${LORONG_CAMPAIGN_ASYNC_ENABLED:false}
     rate-limit:
       enabled: ${LORONG_CAMPAIGN_RATE_LIMIT_ENABLED:${lorong.redis.enabled}}
       permits-per-second: ${LORONG_CAMPAIGN_PERMITS_PER_SECOND:8}
@@ -29,6 +47,8 @@ lorong:
 
 management:
   health:
+    rabbit:
+      enabled: ${lorong.campaign.async.enabled}
     redis:
       enabled: false
   metrics:
@@ -41,6 +61,8 @@ management:
         include: ${LORONG_MANAGEMENT_ENDPOINTS:health,metrics}
   endpoint:
     health:
+    rabbit:
+      enabled: ${lorong.campaign.async.enabled}
       probes:
         enabled: true
       group:
