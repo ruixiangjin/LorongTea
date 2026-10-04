@@ -41,6 +41,7 @@ services:
       LORONG_CAMPAIGN_RATE_LIMIT_ENABLED: ${LORONG_CAMPAIGN_RATE_LIMIT_ENABLED:-true}
       LORONG_CAMPAIGN_PERMITS_PER_SECOND: ${LORONG_CAMPAIGN_PERMITS_PER_SECOND:-8}
       LORONG_CAMPAIGN_BURST: ${LORONG_CAMPAIGN_BURST:-4}
+      LORONG_MANAGEMENT_ENDPOINTS: health,metrics,prometheus
       LORONG_JWT_SECRET: ${LORONG_JWT_SECRET:-}
       LORONG_DEMO_PASSWORD: ${LORONG_DEMO_PASSWORD:-}
     depends_on:
@@ -57,5 +58,33 @@ services:
       start_period: 20s
       retries: 12
 
+  prometheus:
+    profiles: ["monitoring"]
+    image: prom/prometheus:v3.5.3@sha256:ddc2493835a1509976d5e4e0c94199c4f843ce1f42dd6bcfc8231ba734a93ff7
+    ports:
+      - "127.0.0.1:${LORONG_PROMETHEUS_PORT:-9090}:9090"
+    volumes:
+      - ./ops/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    depends_on:
+      app:
+        condition: service_healthy
+
+  grafana:
+    profiles: ["monitoring"]
+    image: grafana/grafana:12.4.3@sha256:2e986801428cd689c2358605289c90ab37d2b39e24808874971f54c99bcdc412
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_AUTH_BASIC_ENABLED: "false"
+      GF_AUTH_DISABLE_LOGIN_FORM: "true"
+    ports:
+      - "127.0.0.1:${LORONG_GRAFANA_PORT:-3000}:3000"
+    volumes:
+      - ./ops/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./ops/grafana/dashboards:/var/lib/grafana/lorong-dashboards:ro
+    depends_on: [prometheus]
+
 volumes:
+  prometheus-data:
   mysql-data:

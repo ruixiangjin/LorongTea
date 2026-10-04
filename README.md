@@ -18,6 +18,12 @@ Flyway migrates MySQL on startup. The `local` profile loads sample menus and cre
 
 To run the API from source with Temurin 21.0.12+8, export the same database password, JWT key and demo password in your shell, start only MySQL with `docker compose up -d --wait mysql`, and run `./mvnw spring-boot:run -Dspring-boot.run.profiles=local` from `backend/`.
 
+## Redis and monitoring
+
+Compose starts Redis for the menu cache and campaign rate limit. To enable the same behavior when running from source, also start the `redis` service and export `LORONG_REDIS_ENABLED=true`. The default rate is eight new claims per second per store and campaign, with a burst of four. A rate-limited request receives HTTP 429 and a `Retry-After` header. Previously committed receipts remain available during a Redis outage.
+
+Start the monitoring profile with `docker compose --profile monitoring up -d --build --wait`. The dashboard shows campaign outcomes, HTTP latency, menu cache activity and MySQL pool usage. [Open the local Grafana dashboard](http://127.0.0.1:3000/d/lorong-tea-campaign/lorong-tea-campaigns)
+
 ## Android
 
 Open `android/` in Android Studio with JDK 17, Android SDK 36 and Build Tools 36.0.0. Start the backend as shown above, then run `app` on an Android emulator. The debug build connects to `http://10.0.2.2:8080`. Sign in with a local demo account.

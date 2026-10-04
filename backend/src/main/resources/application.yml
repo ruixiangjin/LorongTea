@@ -31,10 +31,14 @@ management:
   health:
     redis:
       enabled: false
+  metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
   endpoints:
     web:
       exposure:
-        include: health,metrics
+        include: ${LORONG_MANAGEMENT_ENDPOINTS:health,metrics}
   endpoint:
     health:
       probes:

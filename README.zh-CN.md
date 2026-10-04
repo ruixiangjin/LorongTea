@@ -18,6 +18,12 @@ Flyway 在启动时迁移 MySQL。`local` 配置载入示例菜单，并用演�
 
 若使用 Temurin 21.0.12+8 从源码启动 API，在终端导出同样的数据库密码、JWT 密钥和演示密码，执行 `docker compose up -d --wait mysql` 启动 MySQL，再在 `backend/` 中执行 `./mvnw spring-boot:run -Dspring-boot.run.profiles=local`。
 
+## Redis 与监控
+
+Compose 默认启动 Redis，用于菜单缓存和活动限流。从源码运行时，可以额外启动 `redis` 服务，并设置 `LORONG_REDIS_ENABLED=true` 启用相同行为。默认按活动、按门店每秒放行 8 个新请求，允许瞬时突发 4 个。触发限流时返回 HTTP 429 和 `Retry-After`。Redis 不可用时仍可查询已成单的回执。
+
+运行 `docker compose --profile monitoring up -d --build --wait`，即可在 Grafana 查看抢购结果、HTTP 延迟、菜单缓存和 MySQL 连接池。[打开本地 Grafana 面板](http://127.0.0.1:3000/d/lorong-tea-campaign/lorong-tea-campaigns)
+
 ## Android
 
 在 Android Studio 打开 `android/`，使用 JDK 17、Android SDK 36 和 Build Tools 36.0.0。按上面的步骤启动后端，再在 Android 模拟器运行 `app`。调试版连接 `http://10.0.2.2:8080`，可用本地演示账号登录。
