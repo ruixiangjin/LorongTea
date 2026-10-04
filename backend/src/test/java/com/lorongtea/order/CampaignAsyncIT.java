@@ -9,9 +9,11 @@ import org.springframework.amqp.core.MessageDeliveryMode;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -55,6 +57,14 @@ class CampaignAsyncIT {
     ConfirmedCampaignPublisher publisher;
     @Autowired
     RabbitTemplate rabbit;
+    @Autowired
+    CampaignClaimTransaction claims;
+    @Autowired
+    CampaignMapper campaigns;
+    @Autowired
+    JdbcClient jdbc;
+    @Autowired
+    TransactionTemplate transactions;
 
     @Test
     void confirmsPersistentRoutingAndDetectsMandatoryReturns() {
@@ -69,4 +79,62 @@ class CampaignAsyncIT {
         assertThatThrownBy(() -> publisher.publish(event, claim, "unbound"))
                 .isInstanceOf(AmqpException.class).hasMessageContaining("unroutable");
     }
+    @Test
+    void reservesInventoryAndEnqueuesOnlyWhenAdmissionCommits() {
+        long campaign = campaignId();
+        long customer = customerId();
+        long store = 1;
+        String claimId = UUID.randomUUID().toString();
+        Stock before = stock(campaign, store);
+
+        transactions.executeWithoutResult(transaction -> {
+            assertThat(claims.claim(customer, store, campaign, claimId).receipt().status()).isEqualTo("ACCEPTED");
+            assertThat(stock(campaign, store)).isEqualTo(new Stock(before.quota() - 1, before.available() - 1));
+            assertThat(eventStatus(claimId)).isEqualTo("PENDING");
+            transaction.setRollbackOnly();
+        });
+        assertThat(campaigns.receipt(claimId)).isNull();
+        assertThat(eventStatus(claimId)).isNull();
+        assertThat(stock(campaign, store)).isEqualTo(before);
+
+        var accepted = claims.claim(customer, store, campaign, claimId).receipt();
+        assertThat(accepted.status()).isEqualTo("ACCEPTED");
+        assertThat(accepted.orderId()).isNull();
+        assertThat(campaigns.receipt(claimId)).isEqualTo(accepted);
+        assertThat(eventStatus(claimId)).isEqualTo("PENDING");
+        assertThat(stock(campaign, store)).isEqualTo(new Stock(before.quota() - 1, before.available() - 1));
+    }
+
+    private long campaignId() {
+        return jdbc.sql("SELECT id FROM campaign WHERE code = 'demo-oolong'").query(Long.class).single();
+    }
+
+    private long customerId() {
+        String username = "async-" + UUID.randomUUID();
+        jdbc.sql("""
+                INSERT INTO app_user (username, password_hash, role)
+                SELECT :username, password_hash, role FROM app_user WHERE username = 'demo-customer'
+                """).param("username", username).update();
+        return jdbc.sql("SELECT id FROM app_user WHERE username = :username")
+                .param("username", username).query(Long.class).single();
+    }
+
+    private String eventStatus(String claimId) {
+        return jdbc.sql("SELECT status FROM outbox_event WHERE claim_id = :claim")
+                .param("claim", claimId).query(String.class).optional().orElse(null);
+    }
+
+    private Stock stock(long campaign, long store) {
+        return jdbc.sql("""
+                SELECT cs.quota_remaining, m.available_qty
+                FROM campaign_store cs
+                JOIN store_menu_item m ON m.store_id = cs.store_id AND m.product_id = cs.product_id
+                WHERE cs.campaign_id = :campaign AND cs.store_id = :store
+                """).param("campaign", campaign).param("store", store)
+                .query((row, number) -> new Stock(row.getInt(1), row.getInt(2))).single();
+    }
+
+    private record Stock(int quota, int available) {
+    }
+
 }

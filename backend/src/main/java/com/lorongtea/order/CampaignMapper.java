@@ -75,9 +75,19 @@ interface CampaignMapper {
     void insertClaim(@Param("claimId") String claimId, @Param("customerId") long customerId,
             @Param("campaignId") long campaignId, @Param("storeId") long storeId, @Param("offer") StoreOffer offer);
 
+    @Insert("""
+            INSERT INTO promotion_claim (claim_id, customer_id, campaign_id, store_id, product_id, price_cents,
+                                         product_name, status, expires_at)
+            VALUES (#{claimId}, #{customerId}, #{campaignId}, #{storeId}, #{item.productId}, #{item.unitPriceCents},
+                    #{item.productName}, 'ACCEPTED', TIMESTAMPADD(SECOND, #{deadline}, UTC_TIMESTAMP(6)))
+            """)
+    void reserveClaim(@Param("claimId") String claimId, @Param("customerId") long customerId,
+            @Param("campaignId") long campaignId, @Param("storeId") long storeId,
+            @Param("item") OrderItem item, @Param("deadline") int deadline);
+
     @Select("""
-            SELECT pc.claim_id, pc.customer_id, pc.campaign_id, pc.store_id, pc.status, o.id AS order_id
-            FROM promotion_claim pc JOIN orders o ON o.promotion_claim_id = pc.claim_id
+            SELECT pc.claim_id, pc.customer_id, pc.campaign_id, pc.store_id, pc.status, o.id AS order_id, pc.failure_code
+            FROM promotion_claim pc LEFT JOIN orders o ON o.promotion_claim_id = pc.claim_id
             WHERE pc.claim_id = #{claimId}
             """)
     @Options(flushCache = Options.FlushCachePolicy.TRUE)
@@ -86,7 +96,8 @@ interface CampaignMapper {
     record StoreOffer(long productId, long priceCents, int quotaRemaining) {
     }
 
-    record ReceiptRow(String claimId, long customerId, long campaignId, long storeId, String status, long orderId) {
+    record ReceiptRow(String claimId, long customerId, long campaignId, long storeId, String status, Long orderId,
+                      String failureCode) {
     }
 
     record OfferRow(long campaignId, long storeId, String drinkName, long priceCents,

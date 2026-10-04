@@ -3,6 +3,7 @@ package com.lorongtea.order;
 import java.net.URI;
 import java.util.UUID;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.lorongtea.api.ApiException;
 import com.lorongtea.api.ApiResponse;
 import com.lorongtea.auth.AccountIdentity;
@@ -39,8 +40,12 @@ class CampaignClaimController {
             @Valid @RequestBody ClaimRequest request) {
         var placement = place(account.userId(), storeId, campaignId, canonical(request.claimId()));
         var response = new ApiResponse<>(Receipt.from(placement.receipt()));
+        URI location = URI.create(RECEIPT_PATH + response.data().claimId());
+        if ("ACCEPTED".equals(placement.receipt().status())) {
+            return ResponseEntity.accepted().location(location).body(response);
+        }
         if (placement.created()) {
-            return ResponseEntity.created(URI.create(RECEIPT_PATH + response.data().claimId())).body(response);
+            return ResponseEntity.created(location).body(response);
         }
         return ResponseEntity.ok(response);
     }
@@ -48,7 +53,8 @@ class CampaignClaimController {
     private CampaignClaimTransaction.Placement place(long customerId, long storeId, long campaignId, String claimId) {
         try {
             var placement = claims.claim(customerId, storeId, campaignId, claimId);
-            count(placement.created() ? "created" : "replayed");
+            count(!placement.created() ? "replayed"
+                    : "ACCEPTED".equals(placement.receipt().status()) ? "accepted" : "created");
             return placement;
         } catch (ApiException exception) {
             count(switch (exception.code()) {
@@ -83,10 +89,12 @@ class CampaignClaimController {
     record ClaimRequest(@NotNull @Pattern(regexp = CLAIM_ID) String claimId) {
     }
 
-    record Receipt(String claimId, String storeId, String campaignId, String status, String orderId) {
+    record Receipt(String claimId, String storeId, String campaignId, String status,
+                   @JsonInclude(JsonInclude.Include.NON_NULL) String orderId,
+                   @JsonInclude(JsonInclude.Include.NON_NULL) String failureCode) {
         static Receipt from(CampaignMapper.ReceiptRow row) {
             return new Receipt(row.claimId(), Long.toString(row.storeId()), Long.toString(row.campaignId()),
-                    row.status(), Long.toString(row.orderId()));
+                    row.status(), row.orderId() == null ? null : row.orderId().toString(), row.failureCode());
         }
     }
 }

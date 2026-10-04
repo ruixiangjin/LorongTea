@@ -40,6 +40,7 @@ lorong:
   campaign:
     async:
       enabled: ${LORONG_CAMPAIGN_ASYNC_ENABLED:false}
+      deadline-seconds: ${LORONG_CAMPAIGN_ASYNC_DEADLINE_SECONDS:300}
     rate-limit:
       enabled: ${LORONG_CAMPAIGN_RATE_LIMIT_ENABLED:${lorong.redis.enabled}}
       permits-per-second: ${LORONG_CAMPAIGN_PERMITS_PER_SECOND:8}

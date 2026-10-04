@@ -1,9 +1,12 @@
 package com.lorongtea.order;
 
+import java.util.UUID;
+
 import com.lorongtea.api.ApiException;
 import com.lorongtea.catalog.InventoryMapper;
 import com.lorongtea.catalog.StoreMapper;
 import com.lorongtea.catalog.StoreNotFoundException;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
@@ -14,13 +17,25 @@ class CampaignClaimTransaction {
     private final CampaignMapper campaigns;
     private final StoreMapper stores;
     private final InventoryMapper inventory;
-    private final OrderMapper orders;
+    private final CampaignOrderWriter orders;
+    private final CampaignOutboxMapper outbox;
+    private final boolean async;
+    private final int deadline;
 
-    CampaignClaimTransaction(CampaignMapper campaigns, StoreMapper stores, InventoryMapper inventory, OrderMapper orders) {
+    CampaignClaimTransaction(CampaignMapper campaigns, StoreMapper stores, InventoryMapper inventory,
+            CampaignOrderWriter orders, CampaignOutboxMapper outbox,
+            @Value("${lorong.campaign.async.enabled}") boolean async,
+            @Value("${lorong.campaign.async.deadline-seconds}") int deadline) {
+        if (deadline < 1) {
+            throw new IllegalArgumentException("Campaign reservation deadline must be positive");
+        }
         this.campaigns = campaigns;
         this.stores = stores;
         this.inventory = inventory;
         this.orders = orders;
+        this.outbox = outbox;
+        this.async = async;
+        this.deadline = deadline;
     }
 
     @Transactional(isolation = Isolation.READ_COMMITTED)
@@ -54,12 +69,18 @@ class CampaignClaimTransaction {
             throw soldOut();
         }
 
+        var snapshot = new OrderItem(offer.productId(), item.productName(), offer.priceCents(), 1);
+        if (async) {
+            campaigns.reserveClaim(claimId, customerId, campaignId, storeId, snapshot, deadline);
+            outbox.enqueue(UUID.randomUUID().toString(), claimId);
+            return new Placement(new CampaignMapper.ReceiptRow(
+                    claimId, customerId, campaignId, storeId, "ACCEPTED", null, null), true);
+        }
+
         campaigns.insertClaim(claimId, customerId, campaignId, storeId, offer);
-        OrderDraft order = OrderDraft.promotion(customerId, storeId, claimId, offer.priceCents());
-        orders.insertDraft(order);
-        orders.insertItem(order.id(), new OrderItem(offer.productId(), item.productName(), offer.priceCents(), 1));
+        long orderId = orders.create(customerId, storeId, claimId, snapshot);
         return new Placement(new CampaignMapper.ReceiptRow(
-                claimId, customerId, campaignId, storeId, "ORDER_CREATED", order.id()), true);
+                claimId, customerId, campaignId, storeId, "ORDER_CREATED", orderId, null), true);
     }
 
     private void requireOpen(long campaignId) {
