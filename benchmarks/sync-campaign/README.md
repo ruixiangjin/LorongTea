@@ -8,6 +8,7 @@ Use Temurin 21.0.12+8, Docker Compose and k6 1.5.0. From the repository root, st
 
 ```sh
 export LORONG_DB_PORT=13317 LORONG_DB_PASSWORD="$(openssl rand -hex 16)"
+export LORONG_CAMPAIGN_RATE_LIMIT_ENABLED=false
 export LORONG_JWT_SECRET="$(openssl rand -base64 32)"
 export LORONG_DEMO_PASSWORD="$(openssl rand -hex 12)"
 docker compose -p lorong-campaign-bench up -d --wait mysql
@@ -41,3 +42,20 @@ Apple M4 with 24 GiB of RAM, native macOS Temurin 21.0.12+8 JVM, MySQL 8.4.11 in
 [Measured metrics](result.json) and [database reconciliation](reconciliation.tsv) are available for comparison. This is a baseline at one arrival rate on the stated setup.
 
 The Android walkthrough used both demo stores. At Bukit Bintang, the server committed a claim before its response was dropped. The customer reopened the app, signed in, and recovered the original order under **Orders**. Staff accepted it, marked it ready, confirmed in-store payment and redeemed the customer's pickup code. The same customer then placed a separate RM 6.90 order in Petaling Jaya.
+
+## Rate limit comparison on 2026-10-04
+
+The comparison ran the same 20 requests/s and 15-second measurement with a fresh fixture for each run. Both runs used the same Docker Compose stack and the same warm-up. The enabled configuration allowed eight new claims per second per store and campaign, with a burst of four. Docker Desktop ran Linux ARM64 on an Apple M4 with 24 GiB of host memory. The stack used Temurin 21.0.12+8, MySQL 8.4.11 and Redis 7.4.11. k6 1.5.0 ran on the host.
+
+| Rate limit | Requests | Confirmed orders | HTTP 429 | Technical failures | Dropped iterations | All requests p95 | Confirmed orders p95 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Off | 300 | 300 | 0 | 0 | 0 | 11 ms | 11 ms |
+| On | 300 | 246 | 54 | 0 | 0 | 12 ms | 12.75 ms |
+
+Both runs had zero other business rejections. The MySQL pool had zero waiters at the sampled peak with 5-second scrapes. Each store reconciled inventory, quota, claims and orders, including warm-up. [Measurements](rate-limit-comparison.json) · [Reconciliation](rate-limit-reconciliation.tsv)
+
+Run the same comparison with Docker Compose, Python 3 and k6 on the path. The runner creates a unique Compose project and removes its fixture volumes between runs.
+
+```sh
+bash benchmarks/sync-campaign/compare.sh /tmp/lorong-rate-limit-comparison
+```

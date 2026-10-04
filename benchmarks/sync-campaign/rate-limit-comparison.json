@@ -1,0 +1,53 @@
+{
+  "date": "2026-10-04",
+  "k6_version": "1.5.0",
+  "warmup_claims": 20,
+  "target_requests_per_second": 20,
+  "measurement_seconds": 15,
+  "permits_per_second_per_store": 8,
+  "burst_per_store": 4,
+  "modes": {
+    "unlimited": {
+      "attempted_claims": 300,
+      "created_orders": 300,
+      "rate_limited": 0,
+      "business_rejections": 0,
+      "technical_failures": 0,
+      "dropped_iterations": 0,
+      "claim_latency_ms": {
+        "med": 8,
+        "p(95)": 11,
+        "p(99)": 12.01,
+        "max": 20
+      },
+      "order_confirmation_latency_ms": {
+        "med": 8,
+        "p(95)": 11,
+        "p(99)": 12.01,
+        "max": 20
+      },
+      "max_sampled_mysql_pool_waiters": 0
+    },
+    "limited": {
+      "attempted_claims": 300,
+      "created_orders": 246,
+      "rate_limited": 54,
+      "business_rejections": 0,
+      "technical_failures": 0,
+      "dropped_iterations": 0,
+      "claim_latency_ms": {
+        "p(95)": 12,
+        "p(99)": 15.03,
+        "max": 29,
+        "med": 8
+      },
+      "order_confirmation_latency_ms": {
+        "med": 9,
+        "p(95)": 12.75,
+        "p(99)": 16.65,
+        "max": 29
+      },
+      "max_sampled_mysql_pool_waiters": 0
+    }
+  }
+}

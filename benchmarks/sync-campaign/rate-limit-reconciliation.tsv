@@ -1,0 +1,5 @@
+mode	store	quota_used	stock_used	claims	orders
+unlimited	bukit-bintang	160	160	160	160
+unlimited	petaling-jaya	160	160	160	160
+limited	bukit-bintang	133	133	133	133
+limited	petaling-jaya	133	133	133	133

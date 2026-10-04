@@ -7,9 +7,13 @@ const storeIds = (__ENV.STORE_IDS || '1,2').split(',');
 const campaignId = __ENV.CAMPAIGN_ID;
 const warmup = 20;
 const measured = 300;
+const expectRateLimit = __ENV.EXPECT_RATE_LIMIT === 'true';
 const json = { 'Content-Type': 'application/json' };
 
 const latency = new Trend('claim_latency_ms', true);
+const confirmationLatency = new Trend('order_confirmation_latency_ms', true);
+const attempted = new Counter('attempted_claims');
+const limited = new Counter('rate_limited');
 const created = new Counter('created_orders');
 const rejected = new Counter('business_rejections');
 const failed = new Counter('technical_failures');
@@ -39,7 +43,9 @@ export const options = {
     },
   },
   thresholds: {
-    created_orders: ['count==300'],
+    attempted_claims: [`count==${measured}`],
+    created_orders: [expectRateLimit ? 'count>0' : `count==${measured}`],
+    rate_limited: [expectRateLimit ? 'count>0' : 'count==0'],
     business_rejections: ['count==0'],
     technical_failures: ['count==0'],
     dropped_iterations: ['count==0'],
@@ -98,9 +104,14 @@ export default function (tokens) {
       // Count invalid success envelopes as technical failures.
     }
   }
+  const elapsed = Date.now() - startedAt;
   const businessRejection = response.status === 409;
-  latency.add(Date.now() - startedAt);
+  const throttled = response.status === 429 && Number(response.headers['Retry-After']) > 0;
+  attempted.add(1);
+  latency.add(elapsed);
+  if (confirmed) confirmationLatency.add(elapsed);
   created.add(confirmed ? 1 : 0);
+  limited.add(throttled ? 1 : 0);
   rejected.add(businessRejection ? 1 : 0);
-  failed.add(confirmed || businessRejection ? 0 : 1);
+  failed.add(confirmed || throttled || businessRejection ? 0 : 1);
 }
