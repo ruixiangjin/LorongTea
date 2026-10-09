@@ -7,8 +7,10 @@ import org.springframework.amqp.core.QueueBuilder;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 @Configuration(proxyBeanMethods = false)
+@EnableScheduling
 @ConditionalOnProperty(name = "lorong.campaign.async.enabled", havingValue = "true")
 class CampaignBrokerConfiguration {
     static final String EXCHANGE = "lorong.campaign";

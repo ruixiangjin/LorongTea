@@ -26,6 +26,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
         "LORONG_JWT_SECRET=dGhpcy1pcy1hLXRlc3Qtb25seS1qd3Qtc2lnbmluZy1rZXk=",
         "LORONG_DEMO_PASSWORD=integration-test-password",
         "lorong.campaign.async.enabled=true",
+        "lorong.campaign.async.publish-interval=1h",
         "spring.rabbitmq.listener.simple.auto-startup=false"
 })
 @ActiveProfiles("local")
@@ -65,6 +66,8 @@ class CampaignAsyncIT {
     JdbcClient jdbc;
     @Autowired
     TransactionTemplate transactions;
+    @Autowired
+    CampaignOutboxPublisher outboxPublisher;
 
     @Test
     void confirmsPersistentRoutingAndDetectsMandatoryReturns() {
@@ -103,6 +106,47 @@ class CampaignAsyncIT {
         assertThat(campaigns.receipt(claimId)).isEqualTo(accepted);
         assertThat(eventStatus(claimId)).isEqualTo("PENDING");
         assertThat(stock(campaign, store)).isEqualTo(new Stock(before.quota() - 1, before.available() - 1));
+        jdbc.sql("UPDATE outbox_event SET available_at = UTC_TIMESTAMP(6) + INTERVAL 1 HOUR WHERE claim_id = :claim")
+                .param("claim", claimId).update();
+    }
+
+    @Test
+    void retriesAfterBrokerOutageWithTheOriginalEventId() {
+        String claim = UUID.randomUUID().toString();
+        claims.claim(customerId(), 1, campaignId(), claim);
+        String event = eventId(claim);
+        // Simulate a process exiting after the confirm, before its database update.
+        publisher.publish(event, claim, CampaignBrokerConfiguration.CREATE_ROUTE);
+
+        var docker = BROKER.getDockerClient();
+        docker.pauseContainerCmd(BROKER.getContainerId()).exec();
+        try {
+            outboxPublisher.publishDue();
+            assertThat(eventStatus(claim)).isEqualTo("PENDING");
+            assertThat(jdbc.sql("""
+                    SELECT COUNT(*) FROM outbox_event
+                    WHERE claim_id = :claim AND attempts = 1 AND last_error IS NOT NULL
+                    """).param("claim", claim).query(Integer.class).single()).isEqualTo(1);
+        } finally {
+            docker.unpauseContainerCmd(BROKER.getContainerId()).exec();
+        }
+
+        jdbc.sql("UPDATE outbox_event SET available_at = UTC_TIMESTAMP(6) WHERE claim_id = :claim")
+                .param("claim", claim).update();
+        outboxPublisher.publishDue();
+        assertThat(eventStatus(claim)).isEqualTo("PUBLISHED");
+        for (int i = 0; i < 2; i++) {
+            var delivery = rabbit.receive(CampaignBrokerConfiguration.WORK_QUEUE, 2000);
+            assertThat(delivery).isNotNull();
+            assertThat(delivery.getMessageProperties().getMessageId()).isEqualTo(event);
+        }
+        // The broker may also have received the timed-out send after it resumed.
+        rabbit.receive(CampaignBrokerConfiguration.WORK_QUEUE);
+    }
+
+    private String eventId(String claimId) {
+        return jdbc.sql("SELECT event_id FROM outbox_event WHERE claim_id = :claim")
+                .param("claim", claimId).query(String.class).single();
     }
 
     private long campaignId() {
