@@ -93,6 +93,22 @@ interface CampaignMapper {
     @Options(flushCache = Options.FlushCachePolicy.TRUE)
     ReceiptRow receipt(String claimId);
 
+    @Select("""
+            SELECT customer_id, campaign_id, store_id, product_id, price_cents, product_name, status
+            FROM promotion_claim WHERE claim_id = #{claimId} FOR UPDATE
+            """)
+    ReservedClaim lockClaim(String claimId);
+
+    @Select("SELECT expires_at <= UTC_TIMESTAMP(6) FROM promotion_claim WHERE claim_id = #{claimId}")
+    boolean hasExpired(String claimId);
+
+    @Update("UPDATE promotion_claim SET status = 'ORDER_CREATED' WHERE claim_id = #{claimId}")
+    void markOrderCreated(String claimId);
+
+    record ReservedClaim(long customerId, long campaignId, long storeId, long productId,
+                         long priceCents, String productName, String status) {
+    }
+
     record StoreOffer(long productId, long priceCents, int quotaRemaining) {
     }
 

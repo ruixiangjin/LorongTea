@@ -1,12 +1,16 @@
 package com.lorongtea.order;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.UUID;
 
+import com.rabbitmq.client.ConnectionFactory;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.junit.jupiter.api.Test;
 import org.springframework.amqp.AmqpException;
 import org.springframework.amqp.core.MessageDeliveryMode;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.amqp.rabbit.listener.RabbitListenerEndpointRegistry;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -21,6 +25,7 @@ import org.testcontainers.mysql.MySQLContainer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.awaitility.Awaitility.await;
 
 @SpringBootTest(properties = {
         "LORONG_JWT_SECRET=dGhpcy1pcy1hLXRlc3Qtb25seS1qd3Qtc2lnbmluZy1rZXk=",
@@ -68,6 +73,12 @@ class CampaignAsyncIT {
     TransactionTemplate transactions;
     @Autowired
     CampaignOutboxPublisher outboxPublisher;
+    @Autowired
+    CampaignOrderTransaction campaignOrders;
+    @Autowired
+    RabbitListenerEndpointRegistry listeners;
+    @Autowired
+    MeterRegistry metrics;
 
     @Test
     void confirmsPersistentRoutingAndDetectsMandatoryReturns() {
@@ -142,6 +153,54 @@ class CampaignAsyncIT {
         }
         // The broker may also have received the timed-out send after it resumed.
         rabbit.receive(CampaignBrokerConfiguration.WORK_QUEUE);
+    }
+
+    @Test
+    void redeliverySurvivesRollbackAndLostAcknowledgementWithoutCreatingAnotherOrder() throws Exception {
+        String claim = UUID.randomUUID().toString();
+        claims.claim(customerId(), 1, campaignId(), claim);
+        String event = eventId(claim);
+        publisher.publish(event, claim, CampaignBrokerConfiguration.CREATE_ROUTE);
+
+        var factory = new ConnectionFactory();
+        factory.setHost(BROKER.getHost());
+        factory.setPort(BROKER.getMappedPort(5672));
+        factory.setUsername("lorong_test");
+        factory.setPassword("integration-test-password");
+        try (var connection = factory.newConnection()) {
+            try (var channel = connection.createChannel()) {
+                assertThat(channel.basicGet(CampaignBrokerConfiguration.WORK_QUEUE, false)).isNotNull();
+                transactions.executeWithoutResult(transaction -> {
+                    assertThat(campaignOrders.complete(event, claim)).isEqualTo(CampaignOrderTransaction.Outcome.CREATED);
+                    transaction.setRollbackOnly();
+                });
+                // Closing the channel leaves the delivery unacknowledged.
+            }
+            assertThat(campaigns.receipt(claim).status()).isEqualTo("ACCEPTED");
+            try (var channel = connection.createChannel()) {
+                var delivery = channel.basicGet(CampaignBrokerConfiguration.WORK_QUEUE, false);
+                assertThat(delivery.getEnvelope().isRedeliver()).isTrue();
+                assertThat(campaignOrders.complete(event, claim)).isEqualTo(CampaignOrderTransaction.Outcome.CREATED);
+                // This time the commit succeeds and the channel closes before ACK.
+            }
+        }
+
+        long originalOrder = campaigns.receipt(claim).orderId();
+        publisher.publish("invalid", claim, CampaignBrokerConfiguration.CREATE_ROUTE);
+        var listener = listeners.getListenerContainer(CampaignOrderConsumer.LISTENER_ID);
+        listener.start();
+        try {
+            await().atMost(Duration.ofSeconds(8)).untilAsserted(() -> assertThat(
+                    metrics.counter("lorong.campaign.consumer", "result", "already_final").count()).isEqualTo(1));
+            var quarantined = rabbit.receive(CampaignBrokerConfiguration.DEAD_QUEUE, 4000);
+            assertThat(quarantined).isNotNull();
+            assertThat(quarantined.getMessageProperties().getMessageId()).isEqualTo("invalid");
+            assertThat(campaigns.receipt(claim).orderId()).isEqualTo(originalOrder);
+            assertThat(jdbc.sql("SELECT COUNT(*) FROM orders WHERE promotion_claim_id = :claim")
+                    .param("claim", claim).query(Integer.class).single()).isEqualTo(1);
+        } finally {
+            listener.stop();
+        }
     }
 
     private String eventId(String claimId) {

@@ -36,6 +36,9 @@ interface CampaignOutboxMapper {
             """)
     void defer(@Param("eventId") String eventId, @Param("delay") int delay, @Param("error") String error);
 
+    @Select("SELECT event_id FROM outbox_event WHERE claim_id = #{claimId}")
+    String eventId(String claimId);
+
     record Event(String eventId, String claimId, int attempts) {
     }
 }
