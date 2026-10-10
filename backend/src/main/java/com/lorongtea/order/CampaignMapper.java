@@ -105,6 +105,32 @@ interface CampaignMapper {
     @Update("UPDATE promotion_claim SET status = 'ORDER_CREATED' WHERE claim_id = #{claimId}")
     void markOrderCreated(String claimId);
 
+    @Select("""
+            SELECT claim_id, campaign_id, store_id FROM promotion_claim
+            WHERE status = 'ACCEPTED' AND expires_at <= UTC_TIMESTAMP(6)
+            ORDER BY expires_at, claim_id LIMIT 24
+            """)
+    List<ExpiredClaim> expiredClaims();
+
+    @Select("SELECT COUNT(*) FROM promotion_claim WHERE status = 'ACCEPTED'")
+    long countReserved();
+
+    @Update("""
+            UPDATE promotion_claim SET status = 'FAILED_RELEASED', failure_code = 'CAMPAIGN_RESERVATION_EXPIRED'
+            WHERE claim_id = #{claimId} AND status = 'ACCEPTED' AND expires_at <= UTC_TIMESTAMP(6)
+              AND NOT EXISTS (SELECT 1 FROM orders WHERE promotion_claim_id = #{claimId})
+            """)
+    int markReleased(String claimId);
+
+    @Update("""
+            UPDATE campaign_store SET quota_remaining = quota_remaining + 1
+            WHERE campaign_id = #{campaignId} AND store_id = #{storeId} AND quota_remaining < quota_total
+            """)
+    int restoreQuota(@Param("campaignId") long campaignId, @Param("storeId") long storeId);
+
+    record ExpiredClaim(String claimId, long campaignId, long storeId) {
+    }
+
     record ReservedClaim(long customerId, long campaignId, long storeId, long productId,
                          long priceCents, String productName, String status) {
     }

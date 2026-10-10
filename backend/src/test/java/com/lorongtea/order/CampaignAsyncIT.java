@@ -2,7 +2,10 @@ package com.lorongtea.order;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.Callable;
+import java.util.concurrent.Executors;
 
 import com.rabbitmq.client.ConnectionFactory;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -32,6 +35,7 @@ import static org.awaitility.Awaitility.await;
         "LORONG_DEMO_PASSWORD=integration-test-password",
         "lorong.campaign.async.enabled=true",
         "lorong.campaign.async.publish-interval=1h",
+        "lorong.campaign.async.recovery-interval=1h",
         "spring.rabbitmq.listener.simple.auto-startup=false"
 })
 @ActiveProfiles("local")
@@ -79,6 +83,8 @@ class CampaignAsyncIT {
     RabbitListenerEndpointRegistry listeners;
     @Autowired
     MeterRegistry metrics;
+    @Autowired
+    CampaignReservationRelease release;
 
     @Test
     void confirmsPersistentRoutingAndDetectsMandatoryReturns() {
@@ -186,6 +192,8 @@ class CampaignAsyncIT {
         }
 
         long originalOrder = campaigns.receipt(claim).orderId();
+        jdbc.sql("UPDATE outbox_event SET available_at = UTC_TIMESTAMP(6) + INTERVAL 1 HOUR WHERE claim_id = :claim")
+                .param("claim", claim).update();
         publisher.publish("invalid", claim, CampaignBrokerConfiguration.CREATE_ROUTE);
         var listener = listeners.getListenerContainer(CampaignOrderConsumer.LISTENER_ID);
         listener.start();
@@ -201,6 +209,51 @@ class CampaignAsyncIT {
         } finally {
             listener.stop();
         }
+    }
+
+    @Test
+    void expiryRestoresExactlyOneReservationAndKeepsTheOriginalReceipt() throws Exception {
+        long campaign = campaignId();
+        long customer = customerId();
+        long store = 1;
+        Stock before = stock(campaign, store);
+        String oldClaim = UUID.randomUUID().toString();
+        claims.claim(customer, store, campaign, oldClaim);
+        expire(oldClaim);
+
+        var candidate = new CampaignMapper.ExpiredClaim(oldClaim, campaign, store);
+        String event = eventId(oldClaim);
+        try (var workers = Executors.newFixedThreadPool(3)) {
+            var results = workers.invokeAll(List.<Callable<Object>>of(
+                    () -> release.release(candidate),
+                    () -> release.release(candidate),
+                    () -> campaignOrders.complete(event, oldClaim)));
+            assertThat(List.of(results.get(0).get(), results.get(1).get()))
+                    .containsExactlyInAnyOrder(true, false);
+            assertThat(results.get(2).get()).isIn(CampaignOrderTransaction.Outcome.EXPIRED,
+                    CampaignOrderTransaction.Outcome.ALREADY_FINAL);
+        }
+        assertThat(stock(campaign, store)).isEqualTo(before);
+        var released = claims.claim(customer, store, campaign, oldClaim).receipt();
+        assertThat(released.status()).isEqualTo("FAILED_RELEASED");
+        assertThat(released.failureCode()).isEqualTo("CAMPAIGN_RESERVATION_EXPIRED");
+        assertThat(released.orderId()).isNull();
+        assertThat(eventStatus(oldClaim)).isEqualTo("CLOSED");
+
+        String newClaim = UUID.randomUUID().toString();
+        claims.claim(customer, store, campaign, newClaim);
+        assertThat(campaignOrders.complete(eventId(newClaim), newClaim)).isEqualTo(CampaignOrderTransaction.Outcome.CREATED);
+        expire(newClaim);
+        assertThat(release.release(new CampaignMapper.ExpiredClaim(newClaim, campaign, store))).isFalse();
+        assertThat(campaigns.receipt(newClaim).orderId()).isNotNull();
+        jdbc.sql("UPDATE outbox_event SET available_at = UTC_TIMESTAMP(6) + INTERVAL 1 HOUR WHERE claim_id = :claim")
+                .param("claim", newClaim).update();
+        assertThat(stock(campaign, store)).isEqualTo(new Stock(before.quota() - 1, before.available() - 1));
+    }
+
+    private void expire(String claim) {
+        jdbc.sql("UPDATE promotion_claim SET expires_at = UTC_TIMESTAMP(6) - INTERVAL 1 SECOND WHERE claim_id = :claim")
+                .param("claim", claim).update();
     }
 
     private String eventId(String claimId) {

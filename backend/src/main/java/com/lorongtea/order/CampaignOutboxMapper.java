@@ -39,6 +39,12 @@ interface CampaignOutboxMapper {
     @Select("SELECT event_id FROM outbox_event WHERE claim_id = #{claimId}")
     String eventId(String claimId);
 
+    @Select("SELECT COUNT(*) FROM outbox_event WHERE status = 'PENDING'")
+    long countPending();
+
+    @Update("UPDATE outbox_event SET status = 'CLOSED' WHERE claim_id = #{claimId}")
+    void close(String claimId);
+
     record Event(String eventId, String claimId, int attempts) {
     }
 }

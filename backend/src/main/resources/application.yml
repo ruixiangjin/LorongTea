@@ -11,6 +11,10 @@ spring:
       port: ${LORONG_REDIS_PORT:6380}
       connect-timeout: 250ms
       timeout: 250ms
+  task:
+    scheduling:
+      pool:
+        size: 2
   rabbitmq:
     host: ${LORONG_RABBITMQ_HOST:127.0.0.1}
     port: ${LORONG_RABBITMQ_PORT:5673}
