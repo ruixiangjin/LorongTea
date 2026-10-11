@@ -1,6 +1,14 @@
 name: CI
 
-on: [push, pull_request]
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      async_campaign:
+        description: Run the RabbitMQ campaign experiment tests
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -23,6 +31,9 @@ jobs:
           cache-dependency-path: backend/pom.xml
       - name: Verify backend and core MySQL and Redis behavior
         run: ./mvnw -B verify '-Dit.test=OrderIT,CatalogIT#scopesStaffReadsAndWritesToTheAssignedStore,RedisFeaturesIT'
+      - name: Verify the RabbitMQ campaign experiment
+        if: ${{ inputs.async_campaign }}
+        run: ./mvnw -B verify -Dit.test=CampaignAsyncIT
       - name: Upload failing test reports
         if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2

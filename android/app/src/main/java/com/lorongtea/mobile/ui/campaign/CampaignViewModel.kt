@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lorongtea.mobile.data.ApiFailure
 import com.lorongtea.mobile.data.CampaignRepository
+import com.lorongtea.mobile.data.CampaignResult
 import com.lorongtea.mobile.data.Session
 import com.lorongtea.mobile.ui.common.RemoteState
 import com.lorongtea.mobile.ui.common.display
@@ -63,10 +64,16 @@ internal class CampaignViewModel(
         submitting = viewModelScope.launch {
             mutable.update { it.copy(receipt = CampaignReceipt.Submitting, error = null) }
             try {
-                val orderId = if (recover) campaigns.recover(session, storeId, campaignId)
+                val result = if (recover) campaigns.recover(session, storeId, campaignId)
                     else campaigns.claim(session, storeId, campaignId)
-                val receipt = orderId?.let { CampaignReceipt.OrderCreated(it) } ?: CampaignReceipt.Idle
+                val receipt = when (result) {
+                    is CampaignResult.Accepted -> CampaignReceipt.Accepted(result.claimId)
+                    is CampaignResult.Created -> CampaignReceipt.OrderCreated(result.orderId)
+                    CampaignResult.Released -> CampaignReceipt.Released
+                    null -> CampaignReceipt.Idle
+                }
                 mutable.update { it.copy(receipt = receipt) }
+                if (result == CampaignResult.Released) refresh()
             } catch (error: ApiFailure) {
                 if (error.code == "CAMPAIGN_RATE_LIMITED") {
                     val waitSeconds = error.retryAfterSeconds?.coerceAtLeast(1) ?: 1

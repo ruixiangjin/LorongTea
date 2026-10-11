@@ -24,13 +24,19 @@ internal data class ClaimReceipt(
     val orderId: String?,
 )
 
+internal sealed interface CampaignResult {
+    data class Accepted(val claimId: String) : CampaignResult
+    data class Created(val orderId: String) : CampaignResult
+    data object Released : CampaignResult
+}
+
 internal class CampaignRepository(private val backend: Backend, private val pending: PendingCampaignDao) {
     suspend fun offers(session: Session, storeId: String): List<CampaignDto> =
         backend.request(read = true, session = session) { campaigns(session.authorization, storeId).data }
 
     fun pending(accountId: String) = pending.observe(accountId)
 
-    suspend fun claim(session: Session, storeId: String, campaignId: String): String? {
+    suspend fun claim(session: Session, storeId: String, campaignId: String): CampaignResult? {
         val candidate = PendingCampaignClaim(
             session.userId, storeId, campaignId, UUID.randomUUID().toString(), System.currentTimeMillis(),
         )
@@ -38,7 +44,7 @@ internal class CampaignRepository(private val backend: Backend, private val pend
         return submit(session, candidate)
     }
 
-    suspend fun recover(session: Session, storeId: String, campaignId: String): String? {
+    suspend fun recover(session: Session, storeId: String, campaignId: String): CampaignResult? {
         val claim = pending.find(session.userId, storeId, campaignId) ?: return null
         val receipt = try {
             backend.request(read = true, session = session) {
@@ -51,7 +57,7 @@ internal class CampaignRepository(private val backend: Backend, private val pend
         return complete(claim, receipt)
     }
 
-    private suspend fun submit(session: Session, claim: PendingCampaignClaim): String {
+    private suspend fun submit(session: Session, claim: PendingCampaignClaim): CampaignResult {
         val receipt = try {
             backend.request(read = false, session = session) {
                 claimCampaign(session.authorization, claim.storeId, claim.campaignId, ClaimRequest(claim.claimId)).data
@@ -63,16 +69,29 @@ internal class CampaignRepository(private val backend: Backend, private val pend
         return complete(claim, receipt)
     }
 
-    private suspend fun complete(claim: PendingCampaignClaim, receipt: ClaimReceipt): String {
-        val orderId = receipt.orderId
-        if (receipt.status != "ORDER_CREATED" || orderId.isNullOrBlank() || receipt.claimId != claim.claimId ||
-            receipt.storeId != claim.storeId || receipt.campaignId != claim.campaignId
+    private suspend fun complete(claim: PendingCampaignClaim, receipt: ClaimReceipt): CampaignResult {
+        if (receipt.claimId != claim.claimId || receipt.storeId != claim.storeId ||
+            receipt.campaignId != claim.campaignId
         ) {
-            throw ApiFailure(502, null, null, "The server returned an unexpected claim receipt.")
+            throw invalidReceipt()
         }
-        remove(claim)
-        return orderId
+
+        return when (receipt.status) {
+            "ACCEPTED" -> CampaignResult.Accepted(claim.claimId)
+            "ORDER_CREATED" -> {
+                val orderId = receipt.orderId?.takeIf { it.isNotBlank() } ?: throw invalidReceipt()
+                remove(claim)
+                CampaignResult.Created(orderId)
+            }
+            "FAILED_RELEASED" -> {
+                remove(claim)
+                CampaignResult.Released
+            }
+            else -> throw invalidReceipt()
+        }
     }
+
+    private fun invalidReceipt() = ApiFailure(502, null, null, "The server returned an unexpected claim receipt.")
 
     private suspend fun remove(claim: PendingCampaignClaim) {
         pending.delete(claim.accountId, claim.storeId, claim.campaignId, claim.claimId)

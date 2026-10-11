@@ -55,3 +55,7 @@ Compose 默认启动 Redis，用于菜单缓存和活动限流。从源码运行
 用 `GET /api/v1/stores/{storeId}/campaigns` 查询活动。顾客向 `/api/v1/stores/{storeId}/campaigns/{campaignId}/claims` 提交 UUID 格式的 `claimId`，成单后返回订单 ID。若响应丢失，先查 `GET /api/v1/promotion-claims/{claimId}`。Android 用户可从「我的订单」找回待确认请求。取消待接活动单会回补共享库存，已经用掉的优惠名额和个人资格仍保留。
 
 [同步抢购基线及复现步骤](benchmarks/sync-campaign/README.md)
+
+## 异步抢购实验
+
+默认启动仍使用同步抢购。要体验异步模式，在独立 Compose 项目设置 `LORONG_CAMPAIGN_ASYNC_ENABLED=true` 和 RabbitMQ 密码，再启用 `async` 配置。Android 收到 `202` 后会显示「已受理」，可以用原回执查看成单或超时回补结果。[启动和对账步骤](ops/async-campaign/README.md)

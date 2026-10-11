@@ -4,6 +4,7 @@ import org.springframework.amqp.core.BindingBuilder;
 import org.springframework.amqp.core.Declarables;
 import org.springframework.amqp.core.DirectExchange;
 import org.springframework.amqp.core.QueueBuilder;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -20,7 +21,10 @@ class CampaignBrokerConfiguration {
     static final String DEAD_QUEUE = "lorong.campaign.quarantine";
 
     @Bean
-    Declarables campaignTopology() {
+    Declarables campaignTopology(@Value("${spring.rabbitmq.password}") String password) {
+        if (password.isBlank()) {
+            throw new IllegalArgumentException("Set LORONG_RABBITMQ_PASSWORD to enable asynchronous campaigns");
+        }
         var exchange = new DirectExchange(EXCHANGE);
         var work = QueueBuilder.durable(WORK_QUEUE)
                 .deadLetterExchange(EXCHANGE).deadLetterRoutingKey(DEAD_ROUTE).build();

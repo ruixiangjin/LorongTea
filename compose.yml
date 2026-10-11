@@ -91,25 +91,7 @@ services:
       - ./ops/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus-data:/prometheus
     depends_on:
-      rabbitmq:
-    profiles: ["async"]
-    image: rabbitmq:4.3.5-management-alpine@sha256:b3b8b7f95f5382a19f9ea33540e604f30aad081d37ad9aba72255135765373a1
-    hostname: lorong-rabbitmq
-    environment:
-      RABBITMQ_DEFAULT_USER: ${LORONG_RABBITMQ_USER:-lorong_tea}
-      RABBITMQ_DEFAULT_PASS: ${LORONG_RABBITMQ_PASSWORD:-}
-    ports:
-      - "127.0.0.1:${LORONG_RABBITMQ_PORT:-5673}:5672"
-      - "127.0.0.1:${LORONG_RABBITMQ_UI_PORT:-15673}:15672"
-    volumes:
-      - rabbitmq-data:/var/lib/rabbitmq
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_port_connectivity"]
-      interval: 5s
-      timeout: 5s
-      retries: 12
-
-  app:
+      app:
         condition: service_healthy
 
   grafana:

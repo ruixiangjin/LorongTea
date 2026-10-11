@@ -55,3 +55,7 @@ Open the limited-time offer in either store's menu. The demo offer is RM 6.90 fo
 Use `GET /api/v1/stores/{storeId}/campaigns` to browse. Customers post a UUID `claimId` to `/api/v1/stores/{storeId}/campaigns/{campaignId}/claims` and receive the order ID. If the response is lost, check `GET /api/v1/promotion-claims/{claimId}` first. In Android, the pending request appears under **Orders**. Cancelling a pending campaign order returns the cup to shared stock. The used offer and purchase limit stay in effect.
 
 [Reproduce the synchronous campaign benchmark](benchmarks/sync-campaign/README.md)
+
+## Async campaign experiment
+
+Set `LORONG_CAMPAIGN_ASYNC_ENABLED=true` and a RabbitMQ password in an isolated Compose project, then start the `async` profile. Android can follow a 202 receipt through order creation or reservation release. [Start and reconcile the experiment](ops/async-campaign/README.md)
