@@ -28,6 +28,15 @@ Start the monitoring profile with `docker compose --profile monitoring up -d --b
 
 Open `android/` in Android Studio with JDK 17, Android SDK 36 and Build Tools 36.0.0. Start the backend as shown above, then run `app` on an Android emulator. The debug build connects to `http://10.0.2.2:8080`. Sign in with a local demo account.
 
+## Demo walkthrough
+
+1. Sign in as `demo-customer`, choose Bukit Bintang, add Roasted Oolong Milk Tea to the cart, and place an order.
+2. Sign in as `demo-bb-staff`, open the order, accept it, mark it ready, and confirm in-store payment.
+3. Open the order as the customer and copy its pickup code. As staff, enter the code under **Redeem pickup** and confirm that the order is collected.
+4. As the customer, select Petaling Jaya and open **Limited-time offer** from the menu. Claim the RM 6.90 offer and confirm that the order detail opens.
+
+[Verification and reproducible experiments](docs/verification.md)
+
 ## API
 
 The backend listens on `http://localhost:8080`. Order and staff routes require an `Authorization: Bearer <token>` header. Prices use integer MYR cents.
