@@ -70,10 +70,10 @@ interface CampaignMapper {
 
     @Insert("""
             INSERT INTO promotion_claim (claim_id, customer_id, campaign_id, store_id, product_id, price_cents)
-            VALUES (#{claimId}, #{customerId}, #{campaignId}, #{storeId}, #{offer.productId}, #{offer.priceCents})
+            VALUES (#{claimId}, #{customerId}, #{campaignId}, #{storeId}, #{item.productId}, #{item.unitPriceCents})
             """)
     void insertClaim(@Param("claimId") String claimId, @Param("customerId") long customerId,
-            @Param("campaignId") long campaignId, @Param("storeId") long storeId, @Param("offer") StoreOffer offer);
+            @Param("campaignId") long campaignId, @Param("storeId") long storeId, @Param("item") OrderItem item);
 
     @Insert("""
             INSERT INTO promotion_claim (claim_id, customer_id, campaign_id, store_id, product_id, price_cents,

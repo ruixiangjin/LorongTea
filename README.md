@@ -2,11 +2,11 @@
 
 [简体中文](README.zh-CN.md)
 
-Lorong Tea models a takeaway milk tea chain in Malaysia. The Spring Boot API serves the Bukit Bintang and Petaling Jaya stores. Customers place pickup orders, and staff prepare them and confirm payment at the store.
+Lorong Tea models a takeaway milk tea chain in Malaysia. The Spring Boot API serves the Bukit Bintang and Petaling Jaya stores. Customers place pickup orders, and staff prepare them and confirm payment at the store. Limited-time campaigns use RabbitMQ to create orders asynchronously.
 
 ## Run locally
 
-Install Docker with the Compose plugin. Copy `.env.example` to `.env`. Put the output of `openssl rand -base64 32` in `LORONG_JWT_SECRET` and choose a value for `LORONG_DEMO_PASSWORD`.
+Install Docker with the Compose plugin. Copy `.env.example` to `.env`. Put the output of `openssl rand -base64 32` in `LORONG_JWT_SECRET` choose a value for `LORONG_DEMO_PASSWORD`, and generate `LORONG_RABBITMQ_PASSWORD` with `openssl rand -hex 16`.
 
 ```sh
 docker compose up -d --build --wait
@@ -16,11 +16,11 @@ docker compose logs -f app
 
 Flyway migrates MySQL on startup. The `local` profile loads sample menus and creates `demo-customer`, `demo-bb-staff`, `demo-bb-staff-2` and `demo-pj-staff` with the chosen demo password. Existing accounts retain their passwords. The `mysql-data` volume keeps orders across container rebuilds and `docker compose down`. MySQL applies the configured database password when it first initializes an empty volume.
 
-To run the API from source with Temurin 21.0.12+8, export the same database password, JWT key and demo password in your shell, start only MySQL with `docker compose up -d --wait mysql`, and run `./mvnw spring-boot:run -Dspring-boot.run.profiles=local` from `backend/`.
+To run the API from source with Temurin 21.0.12+8, export the same database and RabbitMQ credentials, JWT key and demo password in your shell, start the dependencies with `docker compose up -d --wait mysql redis rabbitmq`, and run `./mvnw spring-boot:run -Dspring-boot.run.profiles=local` from `backend/`.
 
 ## Redis and monitoring
 
-Compose starts Redis for the menu cache and campaign rate limit. To enable the same behavior when running from source, also start the `redis` service and export `LORONG_REDIS_ENABLED=true`. The default rate is eight new claims per second per store and campaign, with a burst of four. A rate-limited request receives HTTP 429 and a `Retry-After` header. Previously committed receipts remain available during a Redis outage.
+Compose starts Redis for the menu cache and campaign rate limit. To enable the same behavior when running from source, also start the `redis` service and export `LORONG_REDIS_ENABLED=true`. The rate is eight new claims per second per store and campaign, with a burst of four. A rate-limited request receives HTTP 429 and a `Retry-After` header. Previously committed receipts remain available during a Redis outage.
 
 Start the monitoring profile with `docker compose --profile monitoring up -d --build --wait`. The dashboard shows campaign outcomes, HTTP latency, menu cache activity and MySQL pool usage. [Open the local Grafana dashboard](http://127.0.0.1:3000/d/lorong-tea-campaign/lorong-tea-campaigns)
 
@@ -33,9 +33,9 @@ Open `android/` in Android Studio with JDK 17, Android SDK 36 and Build Tools 36
 1. Sign in as `demo-customer`, choose Bukit Bintang, add Roasted Oolong Milk Tea to the cart, and place an order.
 2. Sign in as `demo-bb-staff`, open the order, accept it, mark it ready, and confirm in-store payment.
 3. Open the order as the customer and copy its pickup code. As staff, enter the code under **Redeem pickup** and confirm that the order is collected.
-4. As the customer, select Petaling Jaya and open **Limited-time offer** from the menu. Claim the RM 6.90 offer and confirm that the order detail opens.
+4. As the customer, select Petaling Jaya and open **Limited-time offer** from the menu. Claim the RM 6.90 offer. The app shows the receipt, checks it, and opens the order detail when the order is created.
 
-[Verification and reproducible experiments](docs/verification.md)
+[Verification and reproduction](docs/verification.md)
 
 ## API
 
@@ -61,10 +61,10 @@ Staff use `GET /api/v1/staff/stores/{storeId}/orders?status=CREATED` for the pen
 
 Open the limited-time offer in either store's menu. The demo offer is RM 6.90 for one cup per customer at each store. Bukit Bintang starts with 50 offers and Petaling Jaya with 30. The local demo opens when it is first seeded and closes seven days later. Restarting keeps the original window and remaining quotas.
 
-Use `GET /api/v1/stores/{storeId}/campaigns` to browse. Customers post a UUID `claimId` to `/api/v1/stores/{storeId}/campaigns/{campaignId}/claims` and receive the order ID. If the response is lost, check `GET /api/v1/promotion-claims/{claimId}` first. In Android, the pending request appears under **Orders**. Cancelling a pending campaign order returns the cup to shared stock. The used offer and purchase limit stay in effect.
+Use `GET /api/v1/stores/{storeId}/campaigns` to browse. Customers post a UUID `claimId` to `/api/v1/stores/{storeId}/campaigns/{campaignId}/claims` and receive `202 Accepted` after stock, quota and the Outbox event are saved. RabbitMQ delivers the event for order creation. Android checks the original receipt in the foreground and opens the order once it is created. If the response is lost, look up `GET /api/v1/promotion-claims/{claimId}`. The pending request appears under **Orders**. Cancelling a pending campaign order returns the cup to shared stock. The used offer and purchase limit stay in effect.
 
-[Reproduce the synchronous campaign benchmark](benchmarks/sync-campaign/README.md)
+[Campaign order processing and recovery](ops/async-campaign/README.md)
 
-## Async campaign experiment
+### Synchronous comparison
 
-Set `LORONG_CAMPAIGN_ASYNC_ENABLED=true` and a RabbitMQ password in an isolated Compose project, then start the `async` profile. Android can follow a 202 receipt through order creation or reservation release. [Start and reconcile the experiment](ops/async-campaign/README.md)
+Set `LORONG_CAMPAIGN_MODE=sync` to create campaign orders in the request transaction. Use this mode to reproduce the [synchronous benchmarks](benchmarks/sync-campaign/README.md). Finish processing pending receipts before switching a database to synchronous mode.

@@ -12,7 +12,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 
 @Configuration(proxyBeanMethods = false)
 @EnableScheduling
-@ConditionalOnProperty(name = "lorong.campaign.async.enabled", havingValue = "true")
+@ConditionalOnProperty(name = "lorong.campaign.mode", havingValue = "async")
 class CampaignBrokerConfiguration {
     static final String EXCHANGE = "lorong.campaign";
     static final String CREATE_ROUTE = "order.create";

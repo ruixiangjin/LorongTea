@@ -33,7 +33,6 @@ import static org.awaitility.Awaitility.await;
 @SpringBootTest(properties = {
         "LORONG_JWT_SECRET=dGhpcy1pcy1hLXRlc3Qtb25seS1qd3Qtc2lnbmluZy1rZXk=",
         "LORONG_DEMO_PASSWORD=integration-test-password",
-        "lorong.campaign.async.enabled=true",
         "lorong.campaign.async.publish-interval=1h",
         "lorong.campaign.async.recovery-interval=1h",
         "spring.rabbitmq.listener.simple.auto-startup=false"

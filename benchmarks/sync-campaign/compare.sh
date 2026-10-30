@@ -18,6 +18,7 @@ export LORONG_GRAFANA_PORT="${LORONG_GRAFANA_PORT:-13098}"
 export LORONG_DB_PASSWORD="$(openssl rand -hex 16)"
 export LORONG_JWT_SECRET="$(openssl rand -base64 32)"
 export LORONG_DEMO_PASSWORD="$(openssl rand -hex 12)"
+export LORONG_CAMPAIGN_MODE=sync
 export LORONG_CAMPAIGN_PERMITS_PER_SECOND=8 LORONG_CAMPAIGN_BURST=4
 export BASE_URL="http://127.0.0.1:$LORONG_API_PORT" DEMO_PASSWORD="$LORONG_DEMO_PASSWORD"
 mysql='MYSQL_PWD="$MYSQL_PASSWORD" mysql -B -u "$MYSQL_USER" "$MYSQL_DATABASE"'
@@ -33,7 +34,7 @@ for enabled in false true; do
     if [[ "$enabled" == true ]]; then name=limited; fi
 
     echo "Starting $name comparison"
-    "${compose[@]}" up -d --build --wait --wait-timeout 120 >> "$output/compose.log" 2>&1
+    "${compose[@]}" up -d --build --wait --wait-timeout 120 mysql redis app prometheus grafana >> "$output/compose.log" 2>&1
     CAMPAIGN_ID="$("${compose[@]}" exec -T mysql sh -c "$mysql -N" < benchmarks/sync-campaign/seed.sql)"
     export CAMPAIGN_ID
     "$k6_bin" run --quiet --summary-export "$output/$name.json" benchmarks/sync-campaign/claims.js \

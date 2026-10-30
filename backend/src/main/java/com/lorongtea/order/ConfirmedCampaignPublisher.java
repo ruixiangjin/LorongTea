@@ -15,7 +15,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 @Component
-@ConditionalOnProperty(name = "lorong.campaign.async.enabled", havingValue = "true")
+@ConditionalOnProperty(name = "lorong.campaign.mode", havingValue = "async")
 class ConfirmedCampaignPublisher {
     private final RabbitTemplate rabbit;
 

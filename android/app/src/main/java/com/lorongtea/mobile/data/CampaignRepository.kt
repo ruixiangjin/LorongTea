@@ -46,12 +46,21 @@ internal class CampaignRepository(private val backend: Backend, private val pend
 
     suspend fun recover(session: Session, storeId: String, campaignId: String): CampaignResult? {
         val claim = pending.find(session.userId, storeId, campaignId) ?: return null
+        return lookup(session, claim) ?: submit(session, claim)
+    }
+
+    suspend fun check(session: Session, storeId: String, campaignId: String, claimId: String): CampaignResult? {
+        val claim = pending.find(session.userId, storeId, campaignId)?.takeIf { it.claimId == claimId } ?: return null
+        return lookup(session, claim)
+    }
+
+    private suspend fun lookup(session: Session, claim: PendingCampaignClaim): CampaignResult? {
         val receipt = try {
             backend.request(read = true, session = session) {
                 claimReceipt(session.authorization, claim.claimId).data
             }
         } catch (error: ApiFailure) {
-            if (error.status == 404 && error.code == "CLAIM_NOT_FOUND") return submit(session, claim)
+            if (error.status == 404 && error.code == "CLAIM_NOT_FOUND") return null
             throw error
         }
         return complete(claim, receipt)

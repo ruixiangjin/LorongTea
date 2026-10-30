@@ -2,11 +2,11 @@
 
 [English](README.md)
 
-南巷茶铺以马来西亚连锁奶茶店为背景。Spring Boot API 服务武吉免登和八打灵再也两家门店。顾客可以下自提单，店员负责制作、到店收款和取餐核销。
+南巷茶铺以马来西亚连锁奶茶店为背景。Spring Boot API 服务武吉免登和八打灵再也两家门店。顾客可以下自提单，店员负责制作、到店收款和取餐核销。限时抢购通过 RabbitMQ 异步成单。
 
 ## 本地运行
 
-安装 Docker 和 Compose 插件。将 `.env.example` 复制为 `.env`，把 `openssl rand -base64 32` 的输出填入 `LORONG_JWT_SECRET`，再为 `LORONG_DEMO_PASSWORD` 设置一个演示密码。
+安装 Docker 和 Compose 插件。将 `.env.example` 复制为 `.env`，把 `openssl rand -base64 32` 的输出填入 `LORONG_JWT_SECRET`，设置 `LORONG_DEMO_PASSWORD` 作为演示密码，并用 `openssl rand -hex 16` 生成 `LORONG_RABBITMQ_PASSWORD`。
 
 ```sh
 docker compose up -d --build --wait
@@ -16,11 +16,11 @@ docker compose logs -f app
 
 Flyway 在启动时迁移 MySQL。`local` 配置载入示例菜单，并用演示密码创建 `demo-customer`、`demo-bb-staff`、`demo-bb-staff-2` 和 `demo-pj-staff`。已有账号保留原密码。重建容器或执行 `docker compose down` 后，订单仍保存在 `mysql-data` 数据卷中。MySQL 首次初始化空卷时会使用配置的数据库密码。
 
-若使用 Temurin 21.0.12+8 从源码启动 API，在终端导出同样的数据库密码、JWT 密钥和演示密码，执行 `docker compose up -d --wait mysql` 启动 MySQL，再在 `backend/` 中执行 `./mvnw spring-boot:run -Dspring-boot.run.profiles=local`。
+若使用 Temurin 21.0.12+8 从源码启动 API，在终端导出同样的数据库和 RabbitMQ 凭据、JWT 密钥及演示密码，执行 `docker compose up -d --wait mysql redis rabbitmq` 启动依赖，再在 `backend/` 中执行 `./mvnw spring-boot:run -Dspring-boot.run.profiles=local`。
 
 ## Redis 与监控
 
-Compose 默认启动 Redis，用于菜单缓存和活动限流。从源码运行时，可以额外启动 `redis` 服务，并设置 `LORONG_REDIS_ENABLED=true` 启用相同行为。默认按活动、按门店每秒放行 8 个新请求，允许瞬时突发 4 个。触发限流时返回 HTTP 429 和 `Retry-After`。Redis 不可用时仍可查询已成单的回执。
+Compose 启动 Redis，用于菜单缓存和活动限流。从源码运行时，可以额外启动 `redis` 服务，并设置 `LORONG_REDIS_ENABLED=true` 启用相同行为。按活动和门店限流，每秒放行 8 个新请求，允许瞬时突发 4 个。触发限流时返回 HTTP 429 和 `Retry-After`。Redis 不可用时仍可查询已成单的回执。
 
 运行 `docker compose --profile monitoring up -d --build --wait`，即可在 Grafana 查看抢购结果、HTTP 延迟、菜单缓存和 MySQL 连接池。[打开本地 Grafana 面板](http://127.0.0.1:3000/d/lorong-tea-campaign/lorong-tea-campaigns)
 
@@ -33,9 +33,9 @@ Compose 默认启动 Redis，用于菜单缓存和活动限流。从源码运行
 1. 用 `demo-customer` 登录，选择武吉免登店，把炭焙乌龙鲜奶加入购物车并下单。
 2. 用 `demo-bb-staff` 登录，在「本店订单」打开该订单，依次接单、确认出餐和确认收款。
 3. 顾客打开订单详情复制取餐码，店员在「取茶核销」输入取餐码，确认订单已取餐。
-4. 顾客选择八打灵再也店，从菜单打开「限时抢购」，抢购 RM 6.90 的活动商品并查看订单详情。
+4. 顾客选择八打灵再也店，从菜单打开「限时抢购」，抢购 RM 6.90 的活动商品。App 会显示受理回执，查到成单后打开订单详情。
 
-[验收结果与实验复现](docs/verification.md)
+[验收结果与复现步骤](docs/verification.md)
 
 ## 接口
 
@@ -61,10 +61,10 @@ Compose 默认启动 Redis，用于菜单缓存和活动限流。从源码运行
 
 从任一门店的菜单打开限时活动。演示价为 RM 6.90，同一顾客在每家店可买一杯。武吉免登店有 50 个名额，八打灵再也店有 30 个名额。演示活动在首次载入时开放，七天后结束。重启后沿用原活动窗口和剩余配额。
 
-用 `GET /api/v1/stores/{storeId}/campaigns` 查询活动。顾客向 `/api/v1/stores/{storeId}/campaigns/{campaignId}/claims` 提交 UUID 格式的 `claimId`，成单后返回订单 ID。若响应丢失，先查 `GET /api/v1/promotion-claims/{claimId}`。Android 用户可从「我的订单」找回待确认请求。取消待接活动单会回补共享库存，已经用掉的优惠名额和个人资格仍保留。
+用 `GET /api/v1/stores/{storeId}/campaigns` 查询活动。顾客向 `/api/v1/stores/{storeId}/campaigns/{campaignId}/claims` 提交 UUID 格式的 `claimId`。后端保存库存预留、活动名额和 Outbox 事件后返回 `202 已受理`，随后通过 RabbitMQ 异步成单。App 在活动页自动查询原回执，成单后打开订单详情。若响应丢失，可查 `GET /api/v1/promotion-claims/{claimId}`，也可从「我的订单」找回待确认请求。取消待接活动单会回补共享库存，已经用掉的优惠名额和个人资格仍保留。
 
-[同步抢购基线及复现步骤](benchmarks/sync-campaign/README.md)
+[异步成单与故障恢复](ops/async-campaign/README.md)
 
-## 异步抢购实验
+### 同步对照
 
-默认启动仍使用同步抢购。要体验异步模式，在独立 Compose 项目设置 `LORONG_CAMPAIGN_ASYNC_ENABLED=true` 和 RabbitMQ 密码，再启用 `async` 配置。Android 收到 `202` 后会显示「已受理」，可以用原回执查看成单或超时回补结果。[启动和对账步骤](ops/async-campaign/README.md)
+设置 `LORONG_CAMPAIGN_MODE=sync`，可在请求事务内直接创建活动单，用于复现[同步压测](benchmarks/sync-campaign/README.md)。同一个数据库切换到同步模式前，先处理完已受理的请求。

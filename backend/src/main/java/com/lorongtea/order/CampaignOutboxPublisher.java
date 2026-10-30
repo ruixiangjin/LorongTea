@@ -9,7 +9,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 @Component
-@ConditionalOnProperty(name = "lorong.campaign.async.enabled", havingValue = "true")
+@ConditionalOnProperty(name = "lorong.campaign.mode", havingValue = "async")
 class CampaignOutboxPublisher {
     private static final Logger log = LoggerFactory.getLogger(CampaignOutboxPublisher.class);
 

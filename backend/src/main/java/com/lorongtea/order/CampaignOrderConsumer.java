@@ -17,7 +17,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.TransactionException;
 
 @Component
-@ConditionalOnProperty(name = "lorong.campaign.async.enabled", havingValue = "true")
+@ConditionalOnProperty(name = "lorong.campaign.mode", havingValue = "async")
 class CampaignOrderConsumer {
     static final String LISTENER_ID = "campaign-order-worker";
     private static final Logger log = LoggerFactory.getLogger(CampaignOrderConsumer.class);

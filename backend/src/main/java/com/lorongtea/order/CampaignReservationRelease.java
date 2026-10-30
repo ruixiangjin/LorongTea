@@ -7,7 +7,7 @@ import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-@ConditionalOnProperty(name = "lorong.campaign.async.enabled", havingValue = "true")
+@ConditionalOnProperty(name = "lorong.campaign.mode", havingValue = "async")
 class CampaignReservationRelease {
     private final CampaignMapper campaigns;
     private final InventoryMapper inventory;

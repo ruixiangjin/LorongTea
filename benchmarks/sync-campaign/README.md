@@ -8,7 +8,7 @@ Use Temurin 21.0.12+8, Docker Compose and k6 1.5.0. From the repository root, st
 
 ```sh
 export LORONG_DB_PORT=13317 LORONG_DB_PASSWORD="$(openssl rand -hex 16)"
-export LORONG_CAMPAIGN_RATE_LIMIT_ENABLED=false
+export LORONG_CAMPAIGN_MODE=sync LORONG_CAMPAIGN_RATE_LIMIT_ENABLED=false
 export LORONG_JWT_SECRET="$(openssl rand -base64 32)"
 export LORONG_DEMO_PASSWORD="$(openssl rand -hex 12)"
 docker compose -p lorong-campaign-bench up -d --wait mysql

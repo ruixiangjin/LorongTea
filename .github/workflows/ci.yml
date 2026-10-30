@@ -1,14 +1,6 @@
 name: CI
 
-on:
-  push:
-  pull_request:
-  workflow_dispatch:
-    inputs:
-      async_campaign:
-        description: Run the RabbitMQ campaign experiment tests
-        type: boolean
-        default: false
+on: [push, pull_request, workflow_dispatch]
 
 permissions:
   contents: read
@@ -29,11 +21,8 @@ jobs:
           java-version: '21.0.12+8.0.LTS' # Exact Adoptium release metadata for build +8
           cache: maven
           cache-dependency-path: backend/pom.xml
-      - name: Verify backend and core MySQL and Redis behavior
-        run: ./mvnw -B verify '-Dit.test=OrderIT,CatalogIT#scopesStaffReadsAndWritesToTheAssignedStore,RedisFeaturesIT'
-      - name: Verify the RabbitMQ campaign experiment
-        if: ${{ inputs.async_campaign }}
-        run: ./mvnw -B verify -Dit.test=CampaignAsyncIT
+      - name: Verify backend, MySQL, Redis and RabbitMQ
+        run: ./mvnw -B verify '-Dit.test=OrderIT,CatalogIT#scopesStaffReadsAndWritesToTheAssignedStore,RedisFeaturesIT,CampaignAsyncIT'
       - name: Upload failing test reports
         if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2

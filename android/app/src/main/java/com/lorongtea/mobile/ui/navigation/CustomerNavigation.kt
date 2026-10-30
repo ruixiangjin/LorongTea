@@ -33,6 +33,9 @@ import com.lorongtea.mobile.ui.components.LoadNotice
 import com.lorongtea.mobile.ui.orders.OrderDetailScreen
 import com.lorongtea.mobile.ui.orders.OrderDetailViewModel
 import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 
 internal fun NavGraphBuilder.customerNavigation(
     app: LorongTeaApplication,
@@ -65,6 +68,19 @@ internal fun NavGraphBuilder.customerNavigation(
             LaunchedEffect(created) {
                 if (created != null) {
                     nav.navigate("order/${created.orderId}") { popUpTo(entry.destination.id) { inclusive = true } }
+                }
+            }
+            LaunchedEffect(entry, campaign) {
+                entry.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                    campaign.state.map { page ->
+                        when (val receipt = page.receipt) {
+                            is CampaignReceipt.Accepted -> receipt.claimId
+                            is CampaignReceipt.Unconfirmed -> receipt.claimId
+                            else -> null
+                        }
+                    }.distinctUntilChanged().collectLatest { claimId ->
+                        if (claimId != null) campaign.pollReceipt(claimId)
+                    }
                 }
             }
             CampaignDetailScreen(

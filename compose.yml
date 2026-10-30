@@ -18,7 +18,7 @@ services:
       retries: 20
 
   redis:
-    image: redis:7.4.11-alpine@sha256:858f009f9709ce576febc734aa78b8f6d624b82571f9ddb6bda4377c833b3499
+    image: redis:7.4.11-alpine@sha256:d9436322172a5b482c187bf1f363d3c4fea086fcca6b9c8a94de8f0f39ed3193
     command: ["redis-server", "--save", "", "--appendonly", "no"]
     ports:
       - "127.0.0.1:${LORONG_REDIS_PORT:-6380}:6379"
@@ -29,7 +29,6 @@ services:
       retries: 10
 
   rabbitmq:
-    profiles: ["async"]
     image: rabbitmq:4.3.5-management-alpine@sha256:b3b8b7f95f5382a19f9ea33540e604f30aad081d37ad9aba72255135765373a1
     hostname: lorong-rabbitmq
     environment:
@@ -59,7 +58,7 @@ services:
       LORONG_CAMPAIGN_RATE_LIMIT_ENABLED: ${LORONG_CAMPAIGN_RATE_LIMIT_ENABLED:-true}
       LORONG_CAMPAIGN_PERMITS_PER_SECOND: ${LORONG_CAMPAIGN_PERMITS_PER_SECOND:-8}
       LORONG_CAMPAIGN_BURST: ${LORONG_CAMPAIGN_BURST:-4}
-      LORONG_CAMPAIGN_ASYNC_ENABLED: ${LORONG_CAMPAIGN_ASYNC_ENABLED:-false}
+      LORONG_CAMPAIGN_MODE: ${LORONG_CAMPAIGN_MODE:-async}
       LORONG_CAMPAIGN_ASYNC_DEADLINE_SECONDS: ${LORONG_CAMPAIGN_ASYNC_DEADLINE_SECONDS:-300}
       LORONG_RABBITMQ_HOST: rabbitmq
       LORONG_RABBITMQ_PORT: "5672"

@@ -42,8 +42,8 @@ lorong:
   redis:
     enabled: ${LORONG_REDIS_ENABLED:false}
   campaign:
+    mode: ${LORONG_CAMPAIGN_MODE:async}
     async:
-      enabled: ${LORONG_CAMPAIGN_ASYNC_ENABLED:false}
       deadline-seconds: ${LORONG_CAMPAIGN_ASYNC_DEADLINE_SECONDS:300}
     rate-limit:
       enabled: ${LORONG_CAMPAIGN_RATE_LIMIT_ENABLED:${lorong.redis.enabled}}
@@ -53,7 +53,7 @@ lorong:
 management:
   health:
     rabbit:
-      enabled: ${lorong.campaign.async.enabled}
+      enabled: false
     redis:
       enabled: false
   metrics:
@@ -66,8 +66,6 @@ management:
         include: ${LORONG_MANAGEMENT_ENDPOINTS:health,metrics}
   endpoint:
     health:
-    rabbit:
-      enabled: ${lorong.campaign.async.enabled}
       probes:
         enabled: true
       group:
