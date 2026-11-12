@@ -4,7 +4,7 @@
 
 ## English
 
-Lorong Tea is an independently developed Android app for milk tea ordering and store operations, built around two stores in Malaysia. Customers browse a store's menu, place pickup orders, and claim limited-time offers. Staff manage stock, prepare orders, confirm payment at the counter, and redeem pickup codes. The app uses Kotlin and Jetpack Compose with a Spring Boot API.
+Lorong Tea is an Android milk tea ordering app for two Malaysian stores. Customers browse a store's menu, place pickup orders, and claim limited-time offers. Staff manage stock, prepare orders, confirm payment at the counter, and redeem pickup codes. The app uses Kotlin and Jetpack Compose with a Spring Boot API.
 
 ### Run locally
 
@@ -36,7 +36,7 @@ MySQL stores orders and stock. Redis caches menus and limits incoming offer clai
 
 ## 简体中文
 
-南巷茶铺是一款个人独立开发的 Android 奶茶点单与门店管理软件，以马来西亚的两家奶茶门店为场景。顾客可以查看菜单、下自提单和参加限时抢购。店员可以管理库存、接单制作、确认到店收款和核销取餐码。移动端使用 Kotlin 和 Jetpack Compose，后端使用 Spring Boot。
+南巷茶铺是一款 Android 奶茶点单应用，以马来西亚的两家奶茶门店为场景。顾客可以查看菜单、下自提单和参加限时抢购。店员可以管理库存、接单制作、确认到店收款和核销取餐码。移动端使用 Kotlin 和 Jetpack Compose，后端使用 Spring Boot。
 
 ### 本地启动
 
