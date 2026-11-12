@@ -1,70 +1,67 @@
 # Lorong Tea
 
-[简体中文](README.zh-CN.md)
+[English](#english) · [简体中文](#简体中文) · [MIT License](LICENSE)
 
-Lorong Tea models a takeaway milk tea chain in Malaysia. The Spring Boot API serves the Bukit Bintang and Petaling Jaya stores. Customers place pickup orders, and staff prepare them and confirm payment at the store. Limited-time campaigns use RabbitMQ to create orders asynchronously.
+## English
 
-## Run locally
+Lorong Tea is an Android milk tea ordering demo for two Malaysian stores. Customers browse a store's menu, place pickup orders, and claim limited-time offers. Staff manage stock, prepare orders, confirm payment at the counter, and redeem pickup codes. The app uses Kotlin and Jetpack Compose with a Spring Boot API.
 
-Install Docker with the Compose plugin. Copy `.env.example` to `.env`. Put the output of `openssl rand -base64 32` in `LORONG_JWT_SECRET` choose a value for `LORONG_DEMO_PASSWORD`, and generate `LORONG_RABBITMQ_PASSWORD` with `openssl rand -hex 16`.
+### Run locally
+
+Install Docker with the Compose plugin. Copy `.env.example` to `.env` from the repository root. Generate `LORONG_JWT_SECRET` with `openssl rand -base64 32` and `LORONG_RABBITMQ_PASSWORD` with `openssl rand -hex 16`. Set `LORONG_DEMO_PASSWORD` to a password for the demo accounts.
 
 ```sh
+cp .env.example .env
+# Fill in the three values in .env before starting Compose.
 docker compose up -d --build --wait
 curl -fsS http://127.0.0.1:8080/api/v1/ping
-docker compose logs -f app
 ```
 
-Flyway migrates MySQL on startup. The `local` profile loads sample menus and creates `demo-customer`, `demo-bb-staff`, `demo-bb-staff-2` and `demo-pj-staff` with the chosen demo password. Existing accounts retain their passwords. The `mysql-data` volume keeps orders across container rebuilds and `docker compose down`. MySQL applies the configured database password when it first initializes an empty volume.
+Compose starts the backend, MySQL, Redis, and RabbitMQ. The backend loads sample menus and creates the demo accounts using your demo password.
 
-To run the API from source with Temurin 21.0.12+8, export the same database and RabbitMQ credentials, JWT key and demo password in your shell, start the dependencies with `docker compose up -d --wait mysql redis rabbitmq`, and run `./mvnw spring-boot:run -Dspring-boot.run.profiles=local` from `backend/`.
+### Run the Android app
 
-## Redis and monitoring
+Open `android/` in Android Studio with JDK 17, Android SDK 36, and Build Tools 36.0.0. Run the `app` configuration on an Android emulator. The debug app connects to the local backend at `http://10.0.2.2:8080`.
 
-Compose starts Redis for the menu cache and campaign rate limit. To enable the same behavior when running from source, also start the `redis` service and export `LORONG_REDIS_ENABLED=true`. The rate is eight new claims per second per store and campaign, with a burst of four. A rate-limited request receives HTTP 429 and a `Retry-After` header. Previously committed receipts remain available during a Redis outage.
+### Demo walkthrough
 
-Start the monitoring profile with `docker compose --profile monitoring up -d --build --wait`. The dashboard shows campaign outcomes, HTTP latency, menu cache activity and MySQL pool usage. [Open the local Grafana dashboard](http://127.0.0.1:3000/d/lorong-tea-campaign/lorong-tea-campaigns)
+1. Sign in as `demo-customer`, select Bukit Bintang, and place a pickup order.
+2. Sign in as `demo-bb-staff`, accept the order, mark it ready, and confirm payment at the counter.
+3. Copy the pickup code from the customer's order details. Enter it under **Redeem pickup** as staff.
+4. As the customer, switch to Petaling Jaya and claim the RM 6.90 offer. The app shows a receipt and opens the order once it is created.
 
-## Android
+MySQL stores orders and stock. Redis caches menus and limits incoming offer claims. RabbitMQ handles campaign order creation in the background.
 
-Open `android/` in Android Studio with JDK 17, Android SDK 36 and Build Tools 36.0.0. Start the backend as shown above, then run `app` on an Android emulator. The debug build connects to `http://10.0.2.2:8080`. Sign in with a local demo account.
+[Verification](docs/verification.md) · [API and configuration](docs/reference.md) · [Campaign processing](ops/async-campaign/README.md)
 
-## Demo walkthrough
+## 简体中文
 
-1. Sign in as `demo-customer`, choose Bukit Bintang, add Roasted Oolong Milk Tea to the cart, and place an order.
-2. Sign in as `demo-bb-staff`, open the order, accept it, mark it ready, and confirm in-store payment.
-3. Open the order as the customer and copy its pickup code. As staff, enter the code under **Redeem pickup** and confirm that the order is collected.
-4. As the customer, select Petaling Jaya and open **Limited-time offer** from the menu. Claim the RM 6.90 offer. The app shows the receipt, checks it, and opens the order detail when the order is created.
+南巷茶铺是一个 Android 奶茶点单演示项目，以马来西亚的两家奶茶门店为场景。顾客可以查看菜单、下自提单和参加限时抢购。店员可以管理库存、接单制作、确认到店收款和核销取餐码。移动端使用 Kotlin 和 Jetpack Compose，后端使用 Spring Boot。
 
-[Verification and reproduction](docs/verification.md)
+### 本地启动
 
-## API
+安装 Docker 和 Compose 插件。在仓库根目录把 `.env.example` 复制为 `.env`。用 `openssl rand -base64 32` 生成 `LORONG_JWT_SECRET`，用 `openssl rand -hex 16` 生成 `LORONG_RABBITMQ_PASSWORD`，再给 `LORONG_DEMO_PASSWORD` 设置一个演示密码。
 
-The backend listens on `http://localhost:8080`. Order and staff routes require an `Authorization: Bearer <token>` header. Prices use integer MYR cents.
+```sh
+cp .env.example .env
+# 先在 .env 里填好上述三个值，再启动 Compose。
+docker compose up -d --build --wait
+curl -fsS http://127.0.0.1:8080/api/v1/ping
+```
 
-| Endpoint | Description |
-| --- | --- |
-| `GET /api/v1/stores` and `GET /api/v1/stores/{storeId}/menu` | Browse stores and menus |
-| `POST /api/v1/auth/login` | Exchange `username` and `password` for a 30-minute token |
-| `GET /api/v1/staff/store` | Get the assigned store |
-| `GET /api/v1/staff/stores/{storeId}/menu-items` | View the store menu and stock |
-| `PATCH /api/v1/staff/stores/{storeId}/menu-items/{productId}` | Update `priceCents` or `listed` |
-| `POST /api/v1/staff/stores/{storeId}/stock-adjustments` | Record a stock change with `operationId` (UUID), `productId`, `delta` and `reason`. Reuse the same ID when retrying |
-| `GET /actuator/health/readiness` | Check whether the backend and database are ready |
+Compose 会启动后端、MySQL、Redis 和 RabbitMQ。后端会载入示例菜单，并用你设置的演示密码创建体验账号。
 
-### Orders
+### 运行 Android 应用
 
-Customers use `POST /api/v1/orders` with an `Idempotency-Key` and a body containing `storeId`, `items` and `expectedTotalCents`. Use `GET /api/v1/orders` for history and append `/{orderId}` for details or `/{orderId}/cancel` to cancel with POST.
+用 Android Studio 打开 `android/`，准备 JDK 17、Android SDK 36 和 Build Tools 36.0.0，在模拟器上运行 `app` 配置。调试版通过 `http://10.0.2.2:8080` 连接本地后端。
 
-Staff use `GET /api/v1/staff/stores/{storeId}/orders?status=CREATED` for the pending queue. Under the staff orders path, send POST requests to `/{orderId}/start`, `/{orderId}/ready` and `/{orderId}/confirm-payment`. After payment, send the customer’s `pickupToken` to `POST /api/v1/staff/stores/{storeId}/orders/redeem`.
+### 演示流程
 
-## Campaign orders
+1. 用 `demo-customer` 登录，选择武吉免登店，下一个自提单。
+2. 用 `demo-bb-staff` 登录，接单、确认出餐，并确认到店收款。
+3. 在顾客的订单详情里复制取餐码，再用店员账号在「取茶核销」中输入。
+4. 切回顾客账号，选择八打灵再也店，抢购 RM 6.90 的活动商品。应用会先显示受理回执，成单后打开订单详情。
 
-Open the limited-time offer in either store's menu. The demo offer is RM 6.90 for one cup per customer at each store. Bukit Bintang starts with 50 offers and Petaling Jaya with 30. The local demo opens when it is first seeded and closes seven days later. Restarting keeps the original window and remaining quotas.
+MySQL 保存订单和库存。Redis 缓存菜单并对抢购请求限流。RabbitMQ 在后台处理活动订单。
 
-Use `GET /api/v1/stores/{storeId}/campaigns` to browse. Customers post a UUID `claimId` to `/api/v1/stores/{storeId}/campaigns/{campaignId}/claims` and receive `202 Accepted` after stock, quota and the Outbox event are saved. RabbitMQ delivers the event for order creation. Android checks the original receipt in the foreground and opens the order once it is created. If the response is lost, look up `GET /api/v1/promotion-claims/{claimId}`. The pending request appears under **Orders**. Cancelling a pending campaign order returns the cup to shared stock. The used offer and purchase limit stay in effect.
-
-[Campaign order processing and recovery](ops/async-campaign/README.md)
-
-### Synchronous comparison
-
-Set `LORONG_CAMPAIGN_MODE=sync` to create campaign orders in the request transaction. Use this mode to reproduce the [synchronous benchmarks](benchmarks/sync-campaign/README.md). Finish processing pending receipts before switching a database to synchronous mode.
+[验证记录](docs/verification.md) · [接口和配置](docs/reference.md) · [异步成单](ops/async-campaign/README.md)
