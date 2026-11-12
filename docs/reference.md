@@ -1,12 +1,12 @@
 # Lorong Tea technical reference
 
-[Quick start and Android demo](../README.md#run-locally)
+[Quick start and Android app setup](../README.md#run-locally)
 
 ## Local configuration
 
-Flyway migrates MySQL on startup. The `local` profile loads sample menus and creates `demo-customer`, `demo-bb-staff`, `demo-bb-staff-2` and `demo-pj-staff` with the chosen demo password. Existing accounts retain their passwords. The `mysql-data` volume keeps orders across container rebuilds and `docker compose down`. MySQL applies the configured database password when it first initializes an empty volume.
+Flyway migrates MySQL on startup. The `local` profile loads sample menus and creates `demo-customer`, `demo-bb-staff`, `demo-bb-staff-2` and `demo-pj-staff` with the configured test account password. Existing accounts retain their passwords. The `mysql-data` volume keeps orders across container rebuilds and `docker compose down`. MySQL applies the configured database password when it first initializes an empty volume.
 
-To run the API from source with Temurin 21.0.12+8, export the same database and RabbitMQ credentials, JWT key and demo password in your shell, start the dependencies with `docker compose up -d --wait mysql redis rabbitmq`, and run `./mvnw spring-boot:run -Dspring-boot.run.profiles=local` from `backend/`.
+To run the API from source with Temurin 21.0.12+8, export the same database and RabbitMQ credentials, JWT key and test account password in your shell, start the dependencies with `docker compose up -d --wait mysql redis rabbitmq`, and run `./mvnw spring-boot:run -Dspring-boot.run.profiles=local` from `backend/`.
 
 ## Redis and monitoring
 
@@ -36,7 +36,7 @@ Staff use `GET /api/v1/staff/stores/{storeId}/orders?status=CREATED` for the pen
 
 ## Campaign orders
 
-Open the limited-time offer in either store's menu. The demo offer is RM 6.90 for one cup per customer at each store. Bukit Bintang starts with 50 offers and Petaling Jaya with 30. The local demo opens when it is first seeded and closes seven days later. Restarting keeps the original window and remaining quotas.
+Open the limited-time offer in either store's menu. The seeded offer is RM 6.90 for one cup per customer at each store. Bukit Bintang starts with 50 offers and Petaling Jaya with 30. The offer opens when it is first seeded and closes seven days later. Restarting keeps the original window and remaining quotas.
 
 Use `GET /api/v1/stores/{storeId}/campaigns` to browse. Customers post a UUID `claimId` to `/api/v1/stores/{storeId}/campaigns/{campaignId}/claims` and receive `202 Accepted` after stock, quota and the Outbox event are saved. RabbitMQ delivers the event for order creation. Android checks the original receipt in the foreground and opens the order once it is created. If the response is lost, look up `GET /api/v1/promotion-claims/{claimId}`. The pending request appears under **Orders**. Cancelling a pending campaign order returns the cup to shared stock. The used offer and purchase limit stay in effect.
 

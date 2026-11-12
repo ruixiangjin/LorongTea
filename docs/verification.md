@@ -2,7 +2,7 @@
 
 ## Default application
 
-Start the [local stack](../README.md#run-locally) from a clean checkout with a fresh MySQL volume. Build the Android debug APK and follow the [customer and staff walkthrough](../README.md#demo-walkthrough). To check persistence, recreate the app and MySQL containers under the same Compose project with `docker compose up -d --wait --force-recreate mysql app` and reopen both orders.
+Start the [local stack](../README.md#run-locally) from a clean checkout with a fresh MySQL volume. Build the Android debug APK and follow the [customer and staff walkthrough](../README.md#customer-and-staff-workflow). To check persistence, recreate the app and MySQL containers under the same Compose project with `docker compose up -d --wait --force-recreate mysql app` and reopen both orders.
 
 | Check | Verified behavior |
 | --- | --- |
@@ -22,4 +22,4 @@ Start the [local stack](../README.md#run-locally) from a clean checkout with a f
 
 MySQL is the source of truth for inventory, quotas and orders. Redis provides the menu cache and store-level admission control. RabbitMQ delivers order creation events for asynchronous campaign orders. Payment is an in-store confirmation recorded by staff.
 
-These results describe the local demonstration and its fixtures. The repository has a GitHub Actions workflow, and its backend checks ran locally. A public deployment, hosted CI run and production capacity assessment are outside this verification.
+These results cover the workflows verified locally using the seeded data. The repository has a GitHub Actions workflow, and its backend checks ran locally. A public deployment, hosted CI run and production capacity assessment are outside this verification.

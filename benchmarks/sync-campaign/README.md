@@ -1,6 +1,6 @@
 # Synchronous campaign baseline
 
-The fixed-rate scenario warms up with 20 claims across two stores, then submits 20 claims per second for 15 seconds. Each request uses a distinct demo customer and claim ID. Login completes before warm-up. Both stores have enough inventory and quota for the full run. The load generator checks every receipt for an order ID and measures elapsed client time through receipt validation with millisecond resolution.
+The fixed-rate scenario warms up with 20 claims across two stores, then submits 20 claims per second for 15 seconds. Each request uses a distinct test customer and claim ID. Login completes before warm-up. Both stores have enough inventory and quota for the full run. The load generator checks every receipt for an order ID and measures elapsed client time through receipt validation with millisecond resolution.
 
 ## Reproduce locally
 
@@ -41,7 +41,7 @@ Apple M4 with 24 GiB of RAM, native macOS Temurin 21.0.12+8 JVM, MySQL 8.4.11 in
 
 [Measured metrics](result.json) and [database reconciliation](reconciliation.tsv) are available for comparison. This is a baseline at one arrival rate on the stated setup.
 
-The Android walkthrough used both demo stores. At Bukit Bintang, the server committed a claim before its response was dropped. The customer reopened the app, signed in, and recovered the original order under **Orders**. Staff accepted it, marked it ready, confirmed in-store payment and redeemed the customer's pickup code. The same customer then placed a separate RM 6.90 order in Petaling Jaya.
+The Android walkthrough covered both stores. At Bukit Bintang, the server committed a claim before its response was dropped. The customer reopened the app, signed in, and recovered the original order under **Orders**. Staff accepted it, marked it ready, confirmed in-store payment and redeemed the customer's pickup code. The same customer then placed a separate RM 6.90 order in Petaling Jaya.
 
 ## Rate limit comparison on 2026-10-04
 

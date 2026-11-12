@@ -16,7 +16,7 @@ docker compose exec -T mysql sh -c \
   < ops/async-campaign/reconcile.sql
 ```
 
-The SQL uses the local demo opening stock, stock adjustment history, orders that still consume stock and outstanding reservations. Quota counts all created campaign orders, including cancelled ones. The Prometheus endpoint exposes pending reservation and Outbox counts plus publish, consumer and release outcomes.
+The SQL uses the seeded opening stock, stock adjustment history, orders that still consume stock and outstanding reservations. Quota counts all created campaign orders, including cancelled ones. The Prometheus endpoint exposes pending reservation and Outbox counts plus publish, consumer and release outcomes.
 
 ## Synchronous comparison
 
