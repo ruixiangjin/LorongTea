@@ -4,7 +4,7 @@
 
 ## English
 
-Lorong Tea is an Android milk tea ordering app for two Malaysian stores. Customers browse a store's menu, place pickup orders, and claim limited-time offers. Staff manage stock, prepare orders, confirm payment at the counter, and redeem pickup codes. The app uses Kotlin and Jetpack Compose with a Spring Boot API.
+Lorong Tea is an Android app for milk tea ordering across two stores. Customers browse a store's menu, place pickup orders, and claim limited-time offers. Staff manage stock, prepare orders, confirm payment at the counter, and redeem pickup codes. The app uses Kotlin and Jetpack Compose with a Spring Boot API.
 
 ### Run locally
 
@@ -25,10 +25,10 @@ Open `android/` in Android Studio with JDK 17, Android SDK 36, and Build Tools 3
 
 ### Customer and staff workflow
 
-1. Sign in as `demo-customer`, select Bukit Bintang, and place a pickup order.
+1. Sign in as `demo-customer` and place a pickup order at the store assigned to `demo-bb-staff`.
 2. Sign in as `demo-bb-staff`, accept the order, mark it ready, and confirm payment at the counter.
 3. Copy the pickup code from the customer's order details. Enter it under **Redeem pickup** as staff.
-4. As the customer, switch to Petaling Jaya and claim the RM 6.90 offer. The app shows a receipt and opens the order once it is created.
+4. Sign back in as `demo-customer`, switch to the other store, and claim the limited-time offer. The app shows a receipt and opens the order once it is created.
 
 MySQL stores orders and stock. Redis caches menus and limits incoming offer claims. RabbitMQ handles campaign order creation in the background.
 
@@ -36,7 +36,7 @@ MySQL stores orders and stock. Redis caches menus and limits incoming offer clai
 
 ## 简体中文
 
-南巷茶铺是一款 Android 奶茶点单应用，以马来西亚的两家奶茶门店为场景。顾客可以查看菜单、下自提单和参加限时抢购。店员可以管理库存、接单制作、确认到店收款和核销取餐码。移动端使用 Kotlin 和 Jetpack Compose，后端使用 Spring Boot。
+南巷茶铺是一款支持两家门店点单的 Android 奶茶应用。顾客可以查看菜单、下自提单和参加限时抢购。店员可以管理库存、接单制作、确认到店收款和核销取餐码。移动端使用 Kotlin 和 Jetpack Compose，后端使用 Spring Boot。
 
 ### 本地启动
 
@@ -57,10 +57,10 @@ Compose 会启动后端、MySQL、Redis 和 RabbitMQ。后端会载入示例菜�
 
 ### 顾客与店员操作流程
 
-1. 用 `demo-customer` 登录，选择武吉免登店，下一个自提单。
+1. 用 `demo-customer` 登录，在 `demo-bb-staff` 所属的门店下一个自提单。
 2. 用 `demo-bb-staff` 登录，接单、确认出餐，并确认到店收款。
 3. 在顾客的订单详情里复制取餐码，再用店员账号在「取茶核销」中输入。
-4. 切回顾客账号，选择八打灵再也店，抢购 RM 6.90 的活动商品。应用会先显示受理回执，成单后打开订单详情。
+4. 切回 `demo-customer`，换到另一家门店，领取限时优惠。应用会先显示受理回执，成单后打开订单详情。
 
 MySQL 保存订单和库存。Redis 缓存菜单并对抢购请求限流。RabbitMQ 在后台处理活动订单。
 
